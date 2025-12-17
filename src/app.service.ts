@@ -4,7 +4,7 @@ import { SojebStorage } from './common/lib/Disk/SojebStorage';
 @Injectable()
 export class AppService {
   getHello(): string {
-    return '!!!waffles!!!';
+    return 'Hello world';
   }
 
   async test(image: Express.Multer.File) {
