@@ -6,7 +6,7 @@ import { ArrayHelper } from '../../helper/array.helper';
 import { Role } from '../../guard/role/role.enum';
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../../prisma/prisma.service';
-
+import { UserType } from 'prisma/generated/client';
 
 @Injectable()
 export class UserRepository {
@@ -90,7 +90,7 @@ export class UserRepository {
           username: username,
           email: email,
           password: password,
-          type: 'su_admin',
+          type: UserType.ADMIN,
         },
       });
       return user;
@@ -143,13 +143,7 @@ export class UserRepository {
    * @param param0
    * @returns
    */
-  async attachRole({
-    user_id,
-    role_id,
-  }: {
-    user_id: string;
-    role_id: string;
-  }) {
+  async attachRole({ user_id, role_id }: { user_id: string; role_id: string }) {
     const role = await this.prisma.roleUser.create({
       data: {
         user_id: user_id,
@@ -164,13 +158,7 @@ export class UserRepository {
    * @param param0
    * @returns
    */
-  async syncRole({
-    user_id,
-    role_id,
-  }: {
-    user_id: string;
-    role_id: string;
-  }) {
+  async syncRole({ user_id, role_id }: { user_id: string; role_id: string }) {
     const role = await this.prisma.roleUser.updateMany({
       where: {
         AND: [
@@ -193,13 +181,10 @@ export class UserRepository {
    */
   async createUser({
     name,
-    first_name,
-    last_name,
     email,
     password,
-    phone_number,
-    role_id = null,
-    type = 'user',
+    type,
+    role_id,
   }: {
     name?: string;
     first_name?: string;
@@ -212,20 +197,12 @@ export class UserRepository {
   }) {
     try {
       const data = {};
+
       if (name) {
         data['name'] = name;
       }
-      if (first_name) {
-        data['first_name'] = first_name;
-      }
-      if (last_name) {
-        data['last_name'] = last_name;
-      }
-      if (phone_number) {
-        data['phone_number'] = phone_number;
-      }
+
       if (email) {
-        // Check if email already exist
         const userEmailExist = await this.exist({
           field: 'email',
           value: String(email),
@@ -240,6 +217,7 @@ export class UserRepository {
 
         data['email'] = email;
       }
+
       if (password) {
         data['password'] = await bcrypt.hash(
           password,
@@ -249,10 +227,6 @@ export class UserRepository {
 
       if (type && ArrayHelper.inArray(type, Object.values(Role))) {
         data['type'] = type;
-
-        // if (type == Role.VENDOR) {
-        //   data['approved_at'] = DateHelper.now();
-        // }
       }
 
       const user = await this.prisma.user.create({
@@ -511,15 +485,15 @@ export class UserRepository {
           message: 'User not found',
         };
       }
-      if (userDetails.type == 'vendor') {
+      if (userDetails.type == UserType.EDITOR) {
         return {
           success: false,
-          message: 'User is already a vendor',
+          message: 'User is already an editor',
         };
       }
       await this.prisma.user.update({
         where: { id: user_id },
-        data: { type: type },
+        data: { type: type as UserType },
       });
 
       return {

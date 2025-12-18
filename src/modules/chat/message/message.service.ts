@@ -8,8 +8,7 @@ import { SojebStorage } from '../../../common/lib/Disk/SojebStorage';
 import { DateHelper } from '../../../common/helper/date.helper';
 import { MessageGateway } from './message.gateway';
 import { UserRepository } from '../../../common/repository/user/user.repository';
-import { Role } from '../../../common/guard/role/role.enum';
-import { MessageStatus } from 'prisma/generated/enums';
+import { MessageStatus, UserType } from 'prisma/generated/client';
 
 @Injectable()
 export class MessageService {
@@ -117,7 +116,7 @@ export class MessageService {
         AND: [{ id: conversation_id }],
       };
 
-      if (userDetails.type != Role.ADMIN) {
+      if (userDetails.type != UserType.ADMIN) {
         where_condition['OR'] = [
           { creator_id: user_id },
           { participant_id: user_id },

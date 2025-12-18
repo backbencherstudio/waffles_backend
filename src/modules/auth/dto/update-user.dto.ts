@@ -5,6 +5,20 @@ import { IsOptional } from 'class-validator';
 export class UpdateUserDto extends PartialType(CreateUserDto) {
   @IsOptional()
   @ApiProperty({
+    description: 'First name',
+    example: 'John',
+  })
+  first_name?: string;
+
+  @IsOptional()
+  @ApiProperty({
+    description: 'Last name',
+    example: 'Doe',
+  })
+  last_name?: string;
+
+  @IsOptional()
+  @ApiProperty({
     description: 'Country',
     example: 'Nigeria',
   })
