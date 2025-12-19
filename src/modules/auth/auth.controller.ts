@@ -139,7 +139,9 @@ export class AuthController {
     }
   }
 
-  // *verify email to verify the email
+
+
+  // *verify email(3)
   @ApiOperation({ summary: 'Verify email' })
   @Post('verify-email')
   async verifyEmail(@Body() data: VerifyEmailDto) {
@@ -216,6 +218,50 @@ export class AuthController {
       };
     }
   }
+
+  // *resend token
+  @ApiOperation({ summary: 'Resend reset password token' })
+  @Post('resend-token')
+  async resendToken(@Body() data: { email: string }) {
+    try {
+      const email = data.email;
+      if (!email) {
+        throw new HttpException('Email not provided', HttpStatus.UNAUTHORIZED);
+      }
+      return await this.authService.resendToken(email);
+    } catch (error) {
+      return {
+        success: false,
+        message: 'Failed to resend password reset token',
+      };
+    }
+  }
+  
+  // *veify token
+  @ApiOperation({ summary: 'Verify reset password token' })
+  @Post('verify-token') 
+  async verifyToken(@Body() data: { email: string; token: string }) {
+    try {
+      const email = data.email;
+      const token = data.token;
+      if (!email) {
+        throw new HttpException('Email not provided', HttpStatus.UNAUTHORIZED);
+      }
+      if (!token) {
+        throw new HttpException('Token not provided', HttpStatus.UNAUTHORIZED);
+      }
+      return await this.authService.verifyToken({
+        email: email,
+        token: token,
+      });
+    } catch (error) {
+      return {
+        success: false,
+        message: 'Failed to verify token',
+      };
+    }
+  }
+
 
   // change password if user want to change the password
   @ApiOperation({ summary: 'Change password' })

@@ -27,7 +27,6 @@ export class AuthService {
     @InjectRedis() private readonly redis: Redis,
   ) {}
 
-  // *get logged in user detail
   async me(userId: string) {
     try {
       const user = await this.prisma.user.findFirst({
@@ -79,7 +78,7 @@ export class AuthService {
       };
     }
   }
-
+  // done
   async register({
     name,
     email,
@@ -138,43 +137,23 @@ export class AuthService {
       }
 
       // ----------------------------------------------------
-      // // create otp code
-      // const token = await this.ucodeRepository.createToken({
-      //   userId: user.data.id,
-      //   isOtp: true,
-      // });
-
-      // // send otp code to email
-      // await this.mailService.sendOtpCodeToEmail({
-      //   email: email,
-      //   name: name,
-      //   otp: token,
-      // });
-
-      // return {
-      //   success: true,
-      //   message: 'We have sent an OTP code to your email',
-      // };
-
-      // ----------------------------------------------------
-
-      // Generate verification token
-      const token = await this.ucodeRepository.createVerificationToken({
+      // create otp code
+      const token = await this.ucodeRepository.createToken({
         userId: user.data.id,
-        email: email,
+        isOtp: true,
+        time: 2,
       });
 
-      // Send verification email with token
-      await this.mailService.sendVerificationLink({
-        email,
-        name: email,
-        token: token.token,
-        type: type,
+      // send otp code to email
+      await this.mailService.sendOtpCodeToEmail({
+        email: email,
+        name: name,
+        otp: token,
       });
 
       return {
         success: true,
-        message: 'We have sent a verification link to your email',
+        message: 'We have sent an OTP code to your email',
       };
     } catch (error) {
       return {
@@ -183,7 +162,7 @@ export class AuthService {
       };
     }
   }
-
+  // done
   async login({ email, userId }) {
     try {
       const payload = { email: email, sub: userId };
@@ -218,7 +197,7 @@ export class AuthService {
       };
     }
   }
-
+  // done
   async forgotPassword(email) {
     try {
       const user = await this.userRepository.exist({
@@ -256,6 +235,85 @@ export class AuthService {
     }
   }
 
+  // done
+  async resendToken(email: string) {
+    try {
+      const user = await this.userRepository.getUserByEmail(email);
+
+      if (user) {
+        // create otp code
+        const token = await this.ucodeRepository.createToken({
+          userId: user.id,
+          isOtp: true,
+          time: 2,
+        });
+
+        // send otp code to email
+        await this.mailService.sendOtpCodeToEmail({
+          email: email,
+          name: user.name,
+          otp: token,
+        });
+
+        return {
+          success: true,
+          message: 'We have sent a token code to your email',
+        };
+      } else {
+        return {
+          success: false,
+          message: 'Email not found',
+        };
+      }
+    } catch (error) {
+      return {
+        success: false,
+        message: error.message,
+      };
+    }
+  }
+
+  //
+  async verifyToken({ email, token }) {
+    try {
+      const user = await this.userRepository.exist({
+        field: 'email',
+        value: email,
+      });
+
+      if (user) {
+        const result = await this.ucodeRepository.verifyToken({
+          email: email,
+          token: token,
+        });
+
+        // Check the actual success property, not just if object exists
+        if (result && result.success) {
+          return {
+            success: true,
+            message: result.message || 'Token verified successfully',
+          };
+        } else {
+          return {
+            success: false,
+            message: result?.message || 'Invalid token',
+          };
+        }
+      } else {
+        return {
+          success: false,
+          message: 'Email not found',
+        };
+      }
+    } catch (error) {
+      return {
+        success: false,
+        message: error.message,
+      };
+    }
+  }
+
+  //done
   async verifyEmail({ email, token }) {
     try {
       const user = await this.userRepository.exist({
@@ -278,12 +336,6 @@ export class AuthService {
               email_verified_at: new Date(Date.now()),
             },
           });
-
-          // delete otp code
-          // await this.ucodeRepository.deleteToken({
-          //   email: email,
-          //   token: token,
-          // });
 
           return {
             success: true,
@@ -308,7 +360,7 @@ export class AuthService {
       };
     }
   }
-
+  // done
   async resendVerificationEmail(email: string) {
     try {
       const user = await this.userRepository.getUserByEmail(email);
@@ -353,7 +405,7 @@ export class AuthService {
       });
 
       if (user) {
-        const existToken = await this.ucodeRepository.validateToken({
+        const existToken = await this.ucodeRepository.verifycheckToken({
           email: email,
           token: token,
         });

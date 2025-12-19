@@ -103,6 +103,7 @@ model Ucode {
   token      String?
   email      String?
   expired_at DateTime?
+  verified_at DateTime?
 
   @@map("ucodes")
 }
