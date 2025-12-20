@@ -50,7 +50,7 @@ export class AuthController {
     }
   }
 
-  // *register user(1)
+  // *register user
   @ApiOperation({ summary: 'Register a user' })
   @Post('register')
   async create(@Body() data: CreateUserDto) {
@@ -141,7 +141,7 @@ export class AuthController {
 
 
 
-  // *verify email(3)
+  // *verify email
   @ApiOperation({ summary: 'Verify email' })
   @Post('verify-email')
   async verifyEmail(@Body() data: VerifyEmailDto) {

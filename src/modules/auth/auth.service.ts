@@ -165,12 +165,12 @@ export class AuthService {
   // done
   async login({ email, userId }) {
     try {
-      const payload = { email: email, sub: userId };
+      const user = await this.userRepository.getUserDetails(userId);
+
+      const payload = { email: email, sub: userId, type: user?.type };
 
       const accessToken = this.jwtService.sign(payload, { expiresIn: '1h' });
       const refreshToken = this.jwtService.sign(payload, { expiresIn: '7d' });
-
-      const user = await this.userRepository.getUserDetails(userId);
 
       // store refreshToken
       await this.redis.set(
@@ -513,7 +513,11 @@ export class AuthService {
         };
       }
 
-      const payload = { email: userDetails.email, sub: userDetails.id };
+      const payload = {
+        email: userDetails.email,
+        sub: userDetails.id,
+        type: userDetails.type,
+      };
       const accessToken = this.jwtService.sign(payload, { expiresIn: '1h' });
 
       return {
