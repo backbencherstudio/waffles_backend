@@ -98,6 +98,9 @@ model User {
   roles                Role[]
   role_users           RoleUser[]
   payment_transactions PaymentTransaction[]
+  educations           Education[]
+  skills               skills[]
+  certifications       certification[]
 
   @@map("users")
 }
