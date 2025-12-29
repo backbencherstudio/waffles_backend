@@ -757,6 +757,12 @@ export class AuthService {
         password: _password,
       });
       if (_isValidPassword) {
+        // Check if email is verified
+        if (!user.email_verified_at) {
+          throw new UnauthorizedException(
+            'Please verify your email before logging in',
+          );
+        }
         const { password, ...result } = user;
         if (user.is_two_factor_enabled) {
           if (token) {
