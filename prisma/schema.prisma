@@ -63,7 +63,12 @@ model User {
   type        UserType? @default(CLIENT)
   email_verified_at DateTime?
 
-  //----------------------------------------
+//------------------(relation_part-----------------------------------
+  protfolios          protfolio[]
+  educations           Education[]
+  skills               skills[]
+
+//----------------------------------------
   first_name String? @db.VarChar(255)
   last_name  String? @db.VarChar(255)
   domain     String? @unique
@@ -79,9 +84,6 @@ model User {
   approved_at  DateTime?
   availability String?
 
-
-
-  
   is_two_factor_enabled Int?    @default(0)
   two_factor_secret     String? 
   accounts                  Account[]
@@ -97,11 +99,7 @@ model User {
   ucodes               Ucode[]
   roles                Role[]
   role_users           RoleUser[]
-  payment_transactions PaymentTransaction[]
-  educations           Education[]
-  skills               skills[]
-  certifications       certification[]
-
+  payment_transactions PaymentTransaction[]    
   @@map("users")
 }
 
@@ -128,10 +126,15 @@ model protfolio {
   created_at DateTime  @default(now())
   updated_at DateTime  @default(now())
   deleted_at DateTime?
-
   status     Int?    @default(1) @db.SmallInt
+
   title      String?
+  project_type String[]
   description String?
+  thumbnail  String?
+
+  user_id    String
+  user       User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
 
   @@map("portfolios")
 }
@@ -144,15 +147,12 @@ model Education {
   deleted_at DateTime?
   status     Int?      @default(1) @db.SmallInt
 
+  course_name      String
+  subject          String
+  passing_year     Int
+
   user_id    String
   user       User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
-
-  degree     String?
-  institution String?
-  field_of_study String?
-  start_year Int?
-  end_year   Int?
-  description String? @db.Text
 
   @@map("educations")
 }
@@ -163,27 +163,11 @@ model skills {
   updated_at DateTime  @default(now())
   deleted_at DateTime?
 
-  skill_name       String
+  skill_name       String[]
 
   user_id    String
   user       User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
   @@map("skills")
-}
-
-
-model certification {
-  id         String    @id @default(cuid())
-  created_at DateTime  @default(now())
-  updated_at DateTime  @default(now())
-  deleted_at DateTime?
-  status     Int?      @default(1) @db.SmallInt
-
-  user_id    String
-  user       User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
-
-  image       String[]
-
-  @@map("certifications")
 }
 
 
