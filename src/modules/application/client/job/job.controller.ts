@@ -1,34 +1,71 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
-import { JobService } from './job.service';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  Patch,
+  Post,
+  Req,
+  UploadedFile,
+  UseGuards,
+  UseInterceptors,
+  UsePipes,
+  ValidationPipe,
+} from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { JwtAuthGuard } from 'src/modules/auth/guards/jwt-auth.guard';
 import { CreateJobDto } from './dto/create-job.dto';
 import { UpdateJobDto } from './dto/update-job.dto';
+import { JobsService } from './job.service';
 
-@Controller('job')
-export class JobController {
-  constructor(private readonly jobService: JobService) {}
+@Controller('jobs')
+export class JobsController {
+  constructor(private readonly jobsService: JobsService) {}
 
   @Post()
-  create(@Body() createJobDto: CreateJobDto) {
-    return this.jobService.create(createJobDto);
+  @UseGuards(JwtAuthGuard)
+  @UseInterceptors(FileInterceptor('attachment'))
+  @UsePipes(
+    new ValidationPipe({
+      whitelist: true,
+      transform: true,
+    }),
+  )
+  create(
+    @UploadedFile() file: Express.Multer.File,
+    @Body() dto: CreateJobDto,
+    @Req() req,
+  ) {
+    console.log(req.user);
+    return this.jobsService.createJob(req.user.userId, dto, file);
   }
 
-  @Get()
+  @Get('cards')
+  getJobCards() {
+    return this.jobsService.findAllCards();
+  }
+
+  @Get('all')
   findAll() {
-    return this.jobService.findAll();
-  }
-
-  @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.jobService.findOne(+id);
+    return this.jobsService.getAllJobs();
   }
 
   @Patch(':id')
-  update(@Param('id') id: string, @Body() updateJobDto: UpdateJobDto) {
-    return this.jobService.update(+id, updateJobDto);
+  update(@Param('id') id: string, @Body() dto: UpdateJobDto) {
+    return this.jobsService.update(id, dto);
   }
 
+  // @Patch(':id/status')
+  // changeStatus(
+  //   @Param('id') id: string,
+  //   @Body() dto: UpdateJobDto,
+  // ) {
+  //   return this.jobsService.changeStatus(id, dto);
+  // }
+
   @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.jobService.remove(+id);
+  delete(@Param('id') id: string) {
+    return this.jobsService.softDelete(id);
   }
 }
