@@ -12,42 +12,74 @@ export class JobsService {
   async createJob(
     userId: string,
     dto: CreateJobDto,
-    file: Express.Multer.File,
+    files: Express.Multer.File[],
+    jobPhoto?: Express.Multer.File,
   ) {
-    if (!file) {
-      throw new BadRequestException('Attachment file is required');
+    if (!files?.length) {
+      throw new BadRequestException('At least one attachment file is required');
     }
 
-    // 🔹 Generate unique filename (IMPORTANT)
-    const fileExt = file.originalname.split('.').pop();
-    const fileName = `job-${Date.now()}.${fileExt}`;
-
-    // 🔹 Storage path
-    const storagePath = appConfig().storageUrl.attachment.endsWith('/')
+    const attachmentPath = appConfig().storageUrl.attachment.endsWith('/')
       ? appConfig().storageUrl.attachment
       : `${appConfig().storageUrl.attachment}/`;
 
+    const jobPhotoPath = appConfig().storageUrl.jobPhoto.endsWith('/')
+      ? appConfig().storageUrl.jobPhoto
+      : `${appConfig().storageUrl.jobPhoto}/`;
+
+    // ✅ job photo filename
+    let jobPhotoName: string | null = null;
+    if (jobPhoto) {
+      const photoExt = jobPhoto.originalname.split('.').pop();
+      jobPhotoName = `job-photo-${Date.now()}.${photoExt}`;
+    }
+
     return this.prisma.$transaction(async (tx) => {
-      // 1️⃣ Upload file to storage FIRST
-      await SojebStorage.put(storagePath + fileName, file.buffer);
+      // 1️⃣ Upload job photo (optional)
+      if (jobPhoto && jobPhotoName) {
+        // await SojebStorage.put(jobPhotoPath + jobPhotoName, jobPhoto.buffer);
+        await SojebStorage.put(
+          appConfig().storageUrl.jobPhoto + jobPhotoName,
+          jobPhoto.buffer,
+        );
+      }
 
-      // 2️⃣ Create Attachment record
-      const attachment = await tx.attachment.create({
-        data: {
-          name: file.originalname,
-          type: file.mimetype,
-          size: file.size,
-          file: fileName,
-        },
-      });
+      // 2️⃣ Upload + create attachment records (multiple)
+      const createdAttachments = [];
 
-      // 3️⃣ Create Job + connect attachment
+      for (const file of files) {
+        const ext = file.originalname.split('.').pop();
+        const fileName = `job-attachment-${Date.now()}-${Math.random()
+          .toString(16)
+          .slice(2)}.${ext}`;
+
+        // await SojebStorage.put(attachmentPath + fileName, file.buffer);
+
+        await SojebStorage.put(
+          appConfig().storageUrl.attachment + fileName,
+          file.buffer,
+        );
+
+        const attachment = await tx.attachment.create({
+          data: {
+            name: file.originalname,
+            type: file.mimetype,
+            size: file.size,
+            file: fileName,
+          },
+        });
+
+        createdAttachments.push(attachment);
+      }
+
+      // 3️⃣ Create job + connect all attachments
       const job = await tx.jOB.create({
         data: {
           ...dto,
           user_id: userId,
+          job_photo: jobPhotoName,
           attachment: {
-            connect: [{ id: attachment.id }],
+            connect: createdAttachments.map((a) => ({ id: a.id })),
           },
         },
         include: {
@@ -55,68 +87,127 @@ export class JobsService {
         },
       });
 
-      // 4️⃣ Generate public URL
-      job.attachment = job.attachment.map((att) => ({
-        ...att,
-        file_url: SojebStorage.url(storagePath + att.file),
-      }));
-
+      // 4️⃣ Map URLs
       return {
         success: true,
         message: 'Job created successfully',
-        data: job,
+        data: {
+          ...job,
+          job_photo_url: job.job_photo
+            ? SojebStorage.url(jobPhotoPath + job.job_photo)
+            : null,
+          attachment: job.attachment.map((att) => ({
+            ...att,
+            file_url: att.file
+              ? SojebStorage.url(attachmentPath + att.file)
+              : null,
+          })),
+        },
       };
     });
   }
 
-  findAllCards() {
-    return this.prisma.jOB.findMany({
-      where: { deleted_at: null },
-      select: {
-        id: true,
-        job_title: true,
-        job_category: true,
-        platform: true,
-        content_length: true,
-        project_budget: true,
-        status: true,
-        created_at: true,
-      },
-      orderBy: { created_at: 'desc' },
-    });
-  }
-
-  update(id: string, dto: UpdateJobDto) {
-    const { attachments, ...jobData } = dto;
-
-    return this.prisma.jOB.update({
-      where: { id },
-      data: {
-        ...jobData,
-        attachment: attachments
-          ? {
-              set: attachments.map((id) => ({ id })),
-            }
-          : undefined,
-      },
-    });
-  }
-
   //get all job
-  async getAllJobs() {
+  async getAllJobs(params: {
+    page: number;
+    limit: number;
+    q?: string;
+    status?: string;
+    userId?: string;
+  }) {
     try {
-      const jobs = await this.prisma.jOB.findMany({
-        where: {
-          deleted_at: null,
+      const page =
+        Number.isFinite(params.page) && params.page > 0 ? params.page : 1;
+      const limit =
+        Number.isFinite(params.limit) && params.limit > 0 && params.limit <= 50
+          ? params.limit
+          : 10;
+
+      const skip = (page - 1) * limit;
+
+      const where: any = {
+        user_id: params.userId,
+        deleted_at: null,
+      };
+
+      //  Search (title/description)
+      if (params.q?.trim()) {
+        const q = params.q.trim();
+        where.OR = [
+          { job_title: { contains: q, mode: 'insensitive' } },
+          { job_description: { contains: q, mode: 'insensitive' } },
+        ];
+      }
+
+      //  Filter by status (optional)
+      if (params.status) {
+        where.status = params.status;
+      }
+
+      const [total, jobs] = await this.prisma.$transaction([
+        this.prisma.jOB.count({ where }),
+        this.prisma.jOB.findMany({
+          where,
+          orderBy: { created_at: 'desc' },
+          skip,
+          take: limit,
+          select: {
+            id: true,
+            job_title: true,
+            total_payment: true,
+            created_at: true,
+            status: true,
+            job_photo: true,
+          },
+        }),
+      ]);
+
+      const jobPhotoPath = appConfig().storageUrl.jobPhoto.endsWith('/')
+        ? appConfig().storageUrl.jobPhoto
+        : `${appConfig().storageUrl.jobPhoto}/`;
+
+      const data = jobs.map((job) => ({
+        id: job.id,
+        title: job.job_title,
+        amount: job.total_payment ?? 0,
+        time: job.created_at,
+        status: job.status,
+        job_photo_url: job.job_photo
+          ? SojebStorage.url(jobPhotoPath + job.job_photo)
+          : null,
+      }));
+
+      return {
+        success: true,
+        message: 'All Jobs Post fetched successfully',
+        pagination: {
+          page,
+          limit,
+          total,
+          totalPages: Math.ceil(total / limit),
         },
-        orderBy: {
-          created_at: 'desc',
+        data: data,
+      };
+    } catch (error) {
+      console.error('GET ALL JOBS ERROR:', error);
+      return { success: false, message: 'Failed to fetch jobs', error };
+    }
+  }
+
+  async getSingleJob(id: string) {
+    try {
+      if (!id) {
+        throw new BadRequestException('Job id is required');
+      }
+
+      const job = await this.prisma.jOB.findFirst({
+        where: {
+          id,
+          deleted_at: null,
         },
         include: {
           attachment: {
-            where: {
-              deleted_at: null,
-            },
+            where: { deleted_at: null },
             select: {
               id: true,
               name: true,
@@ -136,27 +227,57 @@ export class JobsService {
           },
         },
       });
+
+      if (!job) {
+        return {
+          success: false,
+          message: 'Job not found',
+        };
+      }
+
+      // attachment: ONLY url array
+      const attachment_urls = job.attachment
+        .filter((a) => a.file)
+        .map((a) =>
+          SojebStorage.url(appConfig().storageUrl.attachment + a.file),
+        );
+
       return {
         success: true,
-        message: 'All Jobs fetched successfully',
-        data: jobs,
+        message: 'Job fetched successfully',
+        data: {
+          ...job,
+          job_photo: job.job_photo
+            ? SojebStorage.url(appConfig().storageUrl.jobPhoto + job.job_photo)
+            : null,
+          attachment: attachment_urls,
+        },
       };
     } catch (error) {
-      console.error('GET ALL JOBS ERROR:', error);
+      console.error('GET SINGLE JOB ERROR:', error);
       return {
         success: false,
-        message: 'Failed to fetch jobs',
-        error: error,
+        message: 'Failed to fetch job',
+        error,
       };
     }
   }
 
-  // changeStatus(id: string, status: JobStatus) {
-  //   return this.prisma.jOB.update({
-  //     where: { id },
-  //     data: { status },
-  //   });
-  // }
+  update(id: string, dto: UpdateJobDto) {
+    const { attachments, ...jobData } = dto;
+
+    return this.prisma.jOB.update({
+      where: { id },
+      data: {
+        ...jobData,
+        attachment: attachments
+          ? {
+              set: attachments.map((id) => ({ id })),
+            }
+          : undefined,
+      },
+    });
+  }
 
   softDelete(id: string) {
     return this.prisma.jOB.update({

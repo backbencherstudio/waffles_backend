@@ -17,6 +17,10 @@ export class CreateJobDto {
   @IsString()
   job_description?: string;
 
+  @IsOptional()
+  @IsString()
+  job_photo?: string;
+
   @IsEnum(ContentLength)
   content_length: ContentLength;
 
@@ -48,7 +52,7 @@ export class CreateJobDto {
   @IsNumber()
   total_payment?: number;
 
-  // 🔥 Attachment IDs (many-to-many)
+  //  Attachment IDs (many-to-many)
   @IsOptional()
   @IsArray()
   @IsString({ each: true })

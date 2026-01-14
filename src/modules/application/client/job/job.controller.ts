@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Delete,
@@ -6,14 +7,13 @@ import {
   Param,
   Patch,
   Post,
+  Query,
   Req,
-  UploadedFile,
+  UploadedFiles,
   UseGuards,
   UseInterceptors,
-  UsePipes,
-  ValidationPipe,
 } from '@nestjs/common';
-import { FileInterceptor } from '@nestjs/platform-express';
+import { FileFieldsInterceptor } from '@nestjs/platform-express';
 import { JwtAuthGuard } from 'src/modules/auth/guards/jwt-auth.guard';
 import { CreateJobDto } from './dto/create-job.dto';
 import { UpdateJobDto } from './dto/update-job.dto';
@@ -25,33 +25,62 @@ export class JobsController {
 
   @Post()
   @UseGuards(JwtAuthGuard)
-  @UseInterceptors(FileInterceptor('attachment'))
-  @UsePipes(
-    new ValidationPipe({
-      whitelist: true,
-      transform: true,
-    }),
+  @UseInterceptors(
+    FileFieldsInterceptor([
+      { name: 'attachment', maxCount: 10 }, // ✅ multiple
+      { name: 'job_photo', maxCount: 1 }, // ✅ single
+    ]),
   )
-  create(
-    @UploadedFile() file: Express.Multer.File,
+  async createJob(
+    @Req() req: any,
     @Body() dto: CreateJobDto,
-    @Req() req,
+    @UploadedFiles()
+    files: {
+      attachment?: Express.Multer.File[];
+      job_photo?: Express.Multer.File[];
+    },
   ) {
-    console.log(req.user);
-    return this.jobsService.createJob(req.user.userId, dto, file);
-  }
+    const userId = req.user?.userId;
+    if (!userId) throw new BadRequestException('User id not found in request');
 
-  @Get('cards')
-  getJobCards() {
-    return this.jobsService.findAllCards();
+    const attachments = files?.attachment ?? [];
+    const jobPhoto = files?.job_photo?.[0];
+
+    if (!attachments.length) {
+      throw new BadRequestException('At least one attachment file is required');
+    }
+
+    return this.jobsService.createJob(userId, dto, attachments, jobPhoto);
   }
 
   @Get('all')
-  findAll() {
-    return this.jobsService.getAllJobs();
+  @UseGuards(JwtAuthGuard)
+  getAll(
+    @Req() req: any,
+    @Query('page') page = '1',
+    @Query('limit') limit = '10',
+    @Query('q') q = '',
+    @Query('status') status?: string,
+  ) {
+    const userId = req.user?.userId;
+    if (!userId) throw new BadRequestException('User id not found in request');
+    return this.jobsService.getAllJobs({
+      page: parseInt(page, 10),
+      limit: parseInt(limit, 10),
+      q,
+      status,
+      userId,
+    });
+  }
+
+  @Get(':id')
+  @UseGuards(JwtAuthGuard)
+  getSingleJob(@Param('id') id: string) {
+    return this.jobsService.getSingleJob(id);
   }
 
   @Patch(':id')
+  @UseGuards(JwtAuthGuard)
   update(@Param('id') id: string, @Body() dto: UpdateJobDto) {
     return this.jobsService.update(id, dto);
   }
