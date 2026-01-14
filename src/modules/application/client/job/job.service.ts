@@ -162,10 +162,6 @@ export class JobsService {
         }),
       ]);
 
-      const jobPhotoPath = appConfig().storageUrl.jobPhoto.endsWith('/')
-        ? appConfig().storageUrl.jobPhoto
-        : `${appConfig().storageUrl.jobPhoto}/`;
-
       const data = jobs.map((job) => ({
         id: job.id,
         title: job.job_title,
@@ -173,7 +169,7 @@ export class JobsService {
         time: job.created_at,
         status: job.status,
         job_photo_url: job.job_photo
-          ? SojebStorage.url(jobPhotoPath + job.job_photo)
+          ? SojebStorage.url(appConfig().storageUrl.jobPhoto + job.job_photo)
           : null,
       }));
 
