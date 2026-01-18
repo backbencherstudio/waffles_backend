@@ -44,10 +44,14 @@ model User {
   deleted_at DateTime?
   status     Int?      @default(1) @db.SmallInt
 
-  name     String? @db.VarChar(255)
-  email    String? @unique
-  password String? @db.VarChar(255)
-  avatar   String?
+  name       String? @db.VarChar(255)
+  email      String? @unique
+  password   String? @db.VarChar(255)
+  avatar     String?
+
+  bio        String? @db.Text
+  location   String? @db.VarChar(255)
+  language   String? @db.VarChar(100)
 
   bio      String?  @db.Text
   location String?  @db.VarChar(255)
@@ -126,10 +130,10 @@ model protfolio {
   deleted_at DateTime?
   status     Int?      @default(1) @db.SmallInt
 
-  title        String?
-  project_type String[]
-  description  String?
-  thumbnail    String?
+  title      String?
+  project_type String?
+  description String?
+  thumbnail  String?
 
   user_id String
   user    User   @relation(fields: [user_id], references: [id], onDelete: Cascade)

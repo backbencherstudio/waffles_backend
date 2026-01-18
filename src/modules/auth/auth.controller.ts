@@ -139,8 +139,6 @@ export class AuthController {
     }
   }
 
-
-
   // *verify email
   @ApiOperation({ summary: 'Verify email' })
   @Post('verify-email')
