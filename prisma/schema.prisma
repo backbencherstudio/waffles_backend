@@ -131,7 +131,7 @@ model protfolio {
   status     Int?      @default(1) @db.SmallInt
 
   title      String?
-  project_type String?
+  project_type String? 
   description String?
   thumbnail  String?
 
@@ -140,6 +140,7 @@ model protfolio {
 
   @@map("portfolios")
 }
+                         
 
 model Education {
   id         String    @id @default(cuid())
@@ -148,9 +149,9 @@ model Education {
   deleted_at DateTime?
   status     Int?      @default(1) @db.SmallInt
 
-  course_name  String
-  subject      String
-  passing_year Int
+  course_name      String
+  subject          String
+  passing_year     Int
 
   user_id String
   user    User   @relation(fields: [user_id], references: [id], onDelete: Cascade)
@@ -169,6 +170,8 @@ model skills {
   user_id String
   user    User   @relation(fields: [user_id], references: [id], onDelete: Cascade)
 
+  user_id    String
+  user       User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
   @@map("skills")
 }
 
