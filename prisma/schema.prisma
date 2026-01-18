@@ -129,7 +129,7 @@ model protfolio {
   status     Int?    @default(1) @db.SmallInt
 
   title      String?
-  project_type String?
+  project_type String? 
   description String?
   thumbnail  String?
 
@@ -138,7 +138,7 @@ model protfolio {
 
   @@map("portfolios")
 }
-
+                         
 
 model Education {
   id         String    @id @default(cuid())
@@ -148,7 +148,7 @@ model Education {
   status     Int?      @default(1) @db.SmallInt
 
   course_name      String
-  subject          String
+  subject          String 
   passing_year     Int
 
   user_id    String
@@ -165,7 +165,7 @@ model skills {
 
   skill_name       String[]
 
-  user_id    String
+  user_id    String   @unique // এটায় বোঝায়: এক user এর শুধু একটাই row হবে
   user       User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
   @@map("skills")
 }
