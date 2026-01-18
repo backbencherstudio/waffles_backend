@@ -29,62 +29,55 @@ import { CreateEducationDto } from './dto/create-education.dto';
 import { UpdateEducationDto } from './dto/update-education.dto';
 import { CreateSkillDto } from './dto/create-skill.dto';
 import { UpdateAboutDto } from './dto/update-about.dto';
+import { use } from 'passport';
 
 @ApiTags('Editor Profile')
 @UseGuards(JwtAuthGuard)
 @ApiBearerAuth()
 @Controller('editor/profile')
 export class ProfileController {
+  
   constructor(private readonly profileService: ProfileService) {}
 
-  // Get full profile
-  @ApiOperation({
-    summary: 'Get full profile with portfolio, education, skills',
-  })
-  @Get()
-  async getProfile(@Req() req: any) {
-    const userId = req.user.userId;
-    return await this.profileService.getProfile(userId);
-  }
 
-  // Update profile (name, bio, location, language, avatar)
-  @ApiOperation({ summary: 'Update profile info' })
+  // *update basic info
+  @Patch('basic-info')
   @UseInterceptors(
     FileInterceptor('avatar', {
       storage: memoryStorage(),
+      limits: { fileSize: 5 * 1024 * 1024 },
     }),
   )
-  @Patch('update')
-  async updateProfile(
+  async updateBasicInfo(
     @Req() req: any,
-    @Body() updateProfileDto: UpdateProfileDto,
-    @UploadedFile() avatar: Express.Multer.File,
+    @Body() createProfileDto: CreateProfileDto,
+    @UploadedFile() avatar?: Express.Multer.File,
   ) {
     const userId = req.user.userId;
-    return await this.profileService.updateProfile(
-      userId,
-      updateProfileDto,
-      avatar,
-    );
+    return await this.profileService.updateBasicProfile(userId, createProfileDto, avatar);
   }
 
-  // Update About Me section
-  @ApiOperation({ summary: 'Update about me section' })
-  @Patch('about')
-  async updateAbout(@Req() req: any, @Body() updateAboutDto: UpdateAboutDto) {
+  //  * update  about me section
+  @Patch('about-me')
+  async updateAboutMe(
+    @Req() req: any,
+    @Body() updateAboutDto: UpdateAboutDto,
+  ) {
     const userId = req.user.userId;
     return await this.profileService.updateAbout(userId, updateAboutDto);
   }
 
-  // ==================== PORTFOLIO ROUTES ====================
 
-  @ApiOperation({ summary: 'Create portfolio' })
+  // topic:protfile 
+
+  // *create portfolio
+  @Post('portfolio')
   @UseInterceptors(
     FileInterceptor('thumbnail', {
       storage: memoryStorage(),
+      limits: { fileSize: 5 * 1024 * 1024 },
     }),
   )
-  @Post('portfolio')
   async createPortfolio(
     @Req() req: any,
     @Body() createPortfolioDto: CreatePortfolioDto,

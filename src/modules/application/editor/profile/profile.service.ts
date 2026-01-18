@@ -14,78 +14,75 @@ import { UpdateAboutDto } from './dto/update-about.dto';
 
 @Injectable()
 export class ProfileService {
+  
   constructor(private prisma: PrismaService) {}
 
-  // Get full profile with portfolio, education, skills
-  async getProfile(userId: string) {
+   
+  // *update basic info
+  async updateBasicProfile(
+    userId: string,
+    createProfileDto: CreateProfileDto,
+    avatar?: Express.Multer.File,
+  ) {
     try {
-      const user = await this.prisma.user.findFirst({
-        where: { id: userId },
-        select: {
-          id: true,
-          name: true,
-          email: true,
-          avatar: true,
-          bio: true,
-          location: true,
-          language: true,
-          about_me: true,
-          status: true,
-          created_at: true,
-          protfolios: {
-            where: { deleted_at: null },
-            orderBy: { created_at: 'desc' },
-          },
-          educations: {
-            where: { deleted_at: null },
-            orderBy: { created_at: 'desc' },
-          },
-          skills: {
-            where: { deleted_at: null },
-          },
-        },
-      });
-
-      if (!user) {
-        return {
-          success: false,
-          message: 'User not found',
-        };
+      const data: any = {};
+      if (createProfileDto.name) {
+        data.name = createProfileDto.name;
+      }
+      if (createProfileDto.bio) {
+        data.bio = createProfileDto.bio;
+      }
+      if (createProfileDto.location) {
+        data.location = createProfileDto.location;
+      }
+      if (createProfileDto.language) {
+        data.language = createProfileDto.language;
       }
 
-      // Add avatar URL
-      if (user.avatar) {
-        user['avatar_url'] = SojebStorage.url(
-          appConfig().storageUrl.avatar + '/' + user.avatar,
-        );
-      }
-
-      // Add thumbnail URLs to portfolios
-      if (user.protfolios) {
-        user.protfolios = user.protfolios.map((portfolio) => {
-          if (portfolio.thumbnail) {
-            portfolio['thumbnail_url'] = SojebStorage.url(
-              appConfig().storageUrl.portfolio + '/' + portfolio.thumbnail,
-            );
-          }
-          return portfolio;
+      if (avatar) {
+        // Delete old avatar from storage
+        const oldUser = await this.prisma.user.findFirst({
+          where: { id: userId },
+          select: { avatar: true },
         });
+        if (oldUser?.avatar) {
+          await SojebStorage.delete(
+            appConfig().storageUrl.avatar + '/' + oldUser.avatar,
+          );
+        }
+
+        // Upload new avatar
+        const fileName = `${StringHelper.randomString()}${avatar.originalname}`;
+        await SojebStorage.put(
+          appConfig().storageUrl.avatar + '/' + fileName,
+          avatar.buffer,
+        );
+        data.avatar = fileName;
       }
+
+      // Update user profile
+      const updatedUser = await this.prisma.user.update({
+        where: { id: userId },
+        data: data
+      });
 
       return {
         success: true,
-        data: user,
+        message: 'Basic profile updated successfully',
+        data: updatedUser,
       };
     } catch (error) {
       return {
         success: false,
-        message: error.message || 'Failed to get profile',
+        message: error.message || 'Failed to update basic profile',
       };
-    }
+    } 
   }
 
-  // Update About Me
-  async updateAbout(userId: string, updateAboutDto: UpdateAboutDto) {
+  // *update about me section
+  async updateAbout(
+    userId: string, 
+    updateAboutDto: UpdateAboutDto) {
     try {
       const updatedUser = await this.prisma.user.update({
         where: { id: userId },
@@ -97,7 +94,6 @@ export class ProfileService {
           about_me: true,
         },
       });
-
       return {
         success: true,
         message: 'About section updated successfully',
@@ -111,8 +107,9 @@ export class ProfileService {
     }
   }
 
-  // ==================== PORTFOLIO ====================
+  // topic:protfolio
 
+  // *create portfolio
   async createPortfolio(
     userId: string,
     createPortfolioDto: CreatePortfolioDto,
@@ -151,6 +148,9 @@ export class ProfileService {
       };
     }
   }
+
+
+
 
   async updatePortfolio(
     userId: string,
