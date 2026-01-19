@@ -88,7 +88,8 @@ export default () => ({
     portfolio: '/portfolio',
     websiteInfo: '/website-info',
     // chat
-    attachment: '/attachment',
+    attachment: 'attachment/',
+    jobPhoto: 'job-photo/',
   },
 
   defaultUser: {

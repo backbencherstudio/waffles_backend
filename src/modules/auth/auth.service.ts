@@ -1,20 +1,20 @@
 // external imports
+import { InjectRedis } from '@nestjs-modules/ioredis';
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
-import { InjectRedis } from '@nestjs-modules/ioredis';
 import Redis from 'ioredis';
 
 //internal imports
-import appConfig from '../../config/app.config';
-import { PrismaService } from '../../prisma/prisma.service';
-import { UserRepository } from '../../common/repository/user/user.repository';
-import { UcodeRepository } from '../../common/repository/ucode/ucode.repository';
-import { MailService } from '../../mail/mail.service';
-import { UpdateUserDto } from './dto/update-user.dto';
-import { SojebStorage } from '../../common/lib/Disk/SojebStorage';
 import { DateHelper } from '../../common/helper/date.helper';
-import { StripePayment } from '../../common/lib/Payment/stripe/StripePayment';
 import { StringHelper } from '../../common/helper/string.helper';
+import { SojebStorage } from '../../common/lib/Disk/SojebStorage';
+import { StripePayment } from '../../common/lib/Payment/stripe/StripePayment';
+import { UcodeRepository } from '../../common/repository/ucode/ucode.repository';
+import { UserRepository } from '../../common/repository/user/user.repository';
+import appConfig from '../../config/app.config';
+import { MailService } from '../../mail/mail.service';
+import { PrismaService } from '../../prisma/prisma.service';
+import { UpdateUserDto } from './dto/update-user.dto';
 
 @Injectable()
 export class AuthService {
@@ -168,6 +168,8 @@ export class AuthService {
       const user = await this.userRepository.getUserDetails(userId);
 
       const payload = { email: email, sub: userId, type: user?.type };
+
+      console.log(payload, 'payload', user);
 
       const accessToken = this.jwtService.sign(payload, { expiresIn: '1h' });
       const refreshToken = this.jwtService.sign(payload, { expiresIn: '7d' });
