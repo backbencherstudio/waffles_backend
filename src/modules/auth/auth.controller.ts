@@ -12,18 +12,17 @@ import {
   UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
+import { AuthGuard } from '@nestjs/passport';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Request, Response } from 'express';
 import { memoryStorage } from 'multer';
-import { FileInterceptor } from '@nestjs/platform-express';
+import { LocalAuthGuard } from 'src/modules/auth/guards/local-auth.guard';
 import { AuthService } from './auth.service';
-import { LocalAuthGuard } from './guards/local-auth.guard';
 import { CreateUserDto } from './dto/create-user.dto';
-import { VerifyEmailDto } from './dto/verify-email.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
+import { VerifyEmailDto } from './dto/verify-email.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
-import appConfig from '../../config/app.config';
-import { AuthGuard } from '@nestjs/passport';
 
 @ApiTags('auth')
 @Controller('auth')
@@ -63,7 +62,7 @@ export class AuthController {
       if (!name) {
         throw new HttpException('Name not provided', HttpStatus.UNAUTHORIZED);
       }
-      
+
       if (!email) {
         throw new HttpException('Email not provided', HttpStatus.UNAUTHORIZED);
       }
@@ -97,8 +96,10 @@ export class AuthController {
   async login(@Req() req: Request, @Res() res: Response) {
     try {
       const user_id = req.user.id;
-
       const user_email = req.user.email;
+
+      console.log('user_id', user_id);
+      console.log('user_email', user_email);
 
       const response = await this.authService.login({
         userId: user_id,
@@ -112,6 +113,7 @@ export class AuthController {
         maxAge: 1000 * 60 * 60 * 24 * 7, // 7 days
       });
 
+      console.log(response);
       res.json(response);
     } catch (error) {
       return {
@@ -234,10 +236,10 @@ export class AuthController {
       };
     }
   }
-  
+
   // *veify token
   @ApiOperation({ summary: 'Verify reset password token' })
-  @Post('verify-token') 
+  @Post('verify-token')
   async verifyToken(@Body() data: { email: string; token: string }) {
     try {
       const email = data.email;
@@ -259,7 +261,6 @@ export class AuthController {
       };
     }
   }
-
 
   // change password if user want to change the password
   @ApiOperation({ summary: 'Change password' })

@@ -123,6 +123,7 @@ model Ucode {
 
   @@map("ucodes")
 }
+
 model protfolio {
   id         String    @id @default(cuid())
   created_at DateTime  @default(now())
@@ -229,6 +230,7 @@ model JOB {
   id               String        @id @default(cuid())
   job_title        String?
   job_description  String?
+  job_photo        String?
   content_length   ContentLength
   project_budget   Float?
   job_category     JobCategory
@@ -245,7 +247,7 @@ model JOB {
   deleted_at       DateTime?
   user_id          String?
   user             User?         @relation(fields: [user_id], references: [id])
-  attachment      Attachment[]
+  attachment       Attachment[]
 }
 
 model Bid {
