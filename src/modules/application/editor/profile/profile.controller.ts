@@ -40,9 +40,17 @@ export class ProfileController {
   
   constructor(private readonly profileService: ProfileService) {}
 
+  // *get full profile
+  @Get()
+  async getProfile(
+    @Req() req: any,
+  ) {
+    const userId = req.user.userId;
+    return await this.profileService.getFullProfile(userId);
+  }
 
-  // *update basic info
-  @Patch('basic-info')
+  // *profile info update 
+  @Patch('profile-info')
   @UseInterceptors(
     FileInterceptor('avatar', {
       storage: memoryStorage(),
@@ -67,7 +75,6 @@ export class ProfileController {
     const userId = req.user.userId;
     return await this.profileService.updateAbout(userId, updateAboutDto);
   }
-
 
   // topic:protfile 
 
@@ -183,7 +190,7 @@ export class ProfileController {
     return await this.profileService.createSkills(userId, createSkillDto);
   }
 
-  //
+
 
 
 

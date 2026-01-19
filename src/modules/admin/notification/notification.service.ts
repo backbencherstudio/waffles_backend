@@ -68,13 +68,13 @@ export class NotificationService {
         for (const notification of notifications) {
           if (notification.sender && notification.sender.avatar) {
             notification.sender['avatar_url'] = SojebStorage.url(
-              appConfig().storageUrl.avatar + notification.sender.avatar,
+              appConfig().storageUrl.avatar + '/' + notification.sender.avatar,
             );
           }
 
           if (notification.receiver && notification.receiver.avatar) {
             notification.receiver['avatar_url'] = SojebStorage.url(
-              appConfig().storageUrl.avatar + notification.receiver.avatar,
+              appConfig().storageUrl.avatar + '/' + notification.receiver.avatar,
             );
           }
         }

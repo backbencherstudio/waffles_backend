@@ -114,12 +114,12 @@ export class ConversationService {
       // add image url
       if (conversation.creator.avatar) {
         conversation.creator['avatar_url'] = SojebStorage.url(
-          appConfig().storageUrl.avatar + conversation.creator.avatar,
+          appConfig().storageUrl.avatar + '/' + conversation.creator.avatar,
         );
       }
       if (conversation.participant.avatar) {
         conversation.participant['avatar_url'] = SojebStorage.url(
-          appConfig().storageUrl.avatar + conversation.participant.avatar,
+          appConfig().storageUrl.avatar + '/' + conversation.participant.avatar,
         );
       }
 
@@ -190,12 +190,12 @@ export class ConversationService {
       for (const conversation of conversations) {
         if (conversation.creator.avatar) {
           conversation.creator['avatar_url'] = SojebStorage.url(
-            appConfig().storageUrl.avatar + conversation.creator.avatar,
+            appConfig().storageUrl.avatar + '/' + conversation.creator.avatar,
           );
         }
         if (conversation.participant.avatar) {
           conversation.participant['avatar_url'] = SojebStorage.url(
-            appConfig().storageUrl.avatar + conversation.participant.avatar,
+            appConfig().storageUrl.avatar + '/' + conversation.participant.avatar,
           );
         }
       }
@@ -242,7 +242,7 @@ export class ConversationService {
       // add image url
       if (conversation.creator.avatar) {
         conversation.creator['avatar_url'] = SojebStorage.url(
-          appConfig().storageUrl.avatar + conversation.creator.avatar,
+          appConfig().storageUrl.avatar + '/' + conversation.creator.avatar,
         );
       }
 

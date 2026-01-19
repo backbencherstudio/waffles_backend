@@ -11,65 +11,35 @@ import { IoAdapter } from '@nestjs/platform-socket.io';
 import { AppModule } from './app.module';
 import { CustomExceptionFilter } from './common/exception/custom-exception.filter';
 import { SojebStorage } from './common/lib/Disk/SojebStorage';
-import appConfig from './config/app.config';
+import { Prisma } from 'prisma/generated';
+import { PrismaExceptionFilter } from './common/exception/prisma-exception.filter';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule, {
     rawBody: true,
   });
 
-  // Handle raw body for webhooks
-  // app.use('/payment/stripe/webhook', express.raw({ type: 'application/json' }));
-  app.useWebSocketAdapter(new IoAdapter(app));
   app.setGlobalPrefix('api');
-  //app.enableCors();
-  app.enableCors({
-    origin: true, // Add your frontend URL
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-    credentials: true,
-    allowedHeaders: [
-      'Content-Type',
-      'Authorization',
-      'X-Requested-With',
-      'Accept',
-    ],
+  app.enableCors();
+  app.use(helmet());
+  
+  app.useStaticAssets(join(process.cwd(), 'public'), {
+    index: false,
+    prefix: '/public',
   });
-  app.use(
-    helmet({
-      crossOriginResourcePolicy: false,
-    }),
-  );
-  // Enable it, if special charactrers not encoding perfectly
-  // app.use((req, res, next) => {
-  //   // Only force content-type for specific API routes, not Swagger or assets
-  //   if (req.path.startsWith('/api') && !req.path.startsWith('/api/docs')) {
-  //     res.setHeader('Content-Type', 'application/json; charset=utf-8');
-  //   }
-  //   next();
-  // });
-
-  app.use('/public', express.static(resolve('./public')));
-  console.log('Serving static from:', join(__dirname, '..', 'public'));
-
-  app
-    .getHttpAdapter()
-    .getInstance()
-    .get('/test-image', (req, res) => {
-      res.sendFile(
-        join(
-          __dirname,
-          '..',
-          'public/storage/avatar/md43o90g_top-view-casual-clothes_158398-305.avif',
-        ),
-      );
-    });
-
+  app.useStaticAssets(join(process.cwd(), 'public/storage'), {
+    index: false,
+    prefix: '/storage',
+  });
   app.useGlobalPipes(
     new ValidationPipe({
       transform: true,
     }),
   );
-  app.useGlobalFilters(new CustomExceptionFilter());
+  app.useGlobalFilters(
+    new PrismaExceptionFilter(),
+    new CustomExceptionFilter()
+  );
 
   // storage setup
   SojebStorage.config({

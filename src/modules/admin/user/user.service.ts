@@ -116,7 +116,7 @@ export class UserService {
       // add avatar url to user
       if (user.avatar) {
         user['avatar_url'] = SojebStorage.url(
-          appConfig().storageUrl.avatar + user.avatar,
+          appConfig().storageUrl.avatar + '/' + user.avatar,
         );
       }
 
