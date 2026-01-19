@@ -199,6 +199,38 @@ export class AuthService {
       };
     }
   }
+
+
+  // get all clients
+  async getAllClients() {
+    try {
+      const clients = await this.userRepository.getAllClients();
+      return clients;
+    } catch (error) {
+      return {
+        success: false,
+        message: error.message,
+      };
+    }
+  }
+
+
+  // get all editors
+  async getAllEditors() {
+    try {
+      const editors = await this.userRepository.getAllEditors();
+      return editors;
+    } catch (error) {
+      return {
+        success: false,
+        message: error.message,
+      };
+    }
+  }
+
+
+
+
   // done
   async forgotPassword(email) {
     try {

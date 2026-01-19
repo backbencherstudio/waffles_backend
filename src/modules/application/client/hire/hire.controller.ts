@@ -1,27 +1,26 @@
 import {
-  Controller,
-  Post,
-  Get,
-  Patch,
+  BadRequestException,
   Body,
+  Controller,
+  Get,
   Param,
+  Post,
+  Query,
   Req,
+  UploadedFiles,
   UseGuards,
   UseInterceptors,
-  UploadedFiles,
-  BadRequestException,
-  Query,
 } from '@nestjs/common';
-import { HireService } from './hire.service';
-import { CreateHireDto } from './dto/create-hire.dto';
 import { FileFieldsInterceptor } from '@nestjs/platform-express';
 import { JwtAuthGuard } from 'src/modules/auth/guards/jwt-auth.guard';
+import { CreateHireDto } from './dto/create-hire.dto';
+import { HireService } from './hire.service';
 
 @Controller('hires')
 export class HireController {
   constructor(private readonly hireService: HireService) {}
 
-  @Post()
+  @Post(':hireProfileId')
   @UseGuards(JwtAuthGuard)
   @UseInterceptors(
     FileFieldsInterceptor([
@@ -31,6 +30,7 @@ export class HireController {
   )
   async create(
     @Req() req: any,
+    @Param('hireProfileId') hireProfileId: string,
     @Body() dto: CreateHireDto,
     @UploadedFiles()
     files: {
@@ -47,10 +47,17 @@ export class HireController {
       throw new BadRequestException('At least one attachment is required');
     }
 
-    return this.hireService.createHire(userId, dto, attachments, projectPhoto);
+    return this.hireService.createHire(
+      userId,
+      dto,
+      attachments,
+      projectPhoto,
+      hireProfileId,
+    );
   }
 
-  @Get()
+  @Get('all')
+  @UseGuards(JwtAuthGuard)
   async findAll(
     @Req() req: any,
     @Query('page') page = '1',

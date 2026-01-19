@@ -1,12 +1,12 @@
-import * as bcrypt from 'bcrypt';
-import * as speakeasy from 'speakeasy';
-import * as QRCode from 'qrcode';
-import appConfig from '../../../config/app.config';
-import { ArrayHelper } from '../../helper/array.helper';
-import { Role } from '../../guard/role/role.enum';
 import { Injectable } from '@nestjs/common';
-import { PrismaService } from '../../../prisma/prisma.service';
+import * as bcrypt from 'bcrypt';
 import { UserType } from 'prisma/generated/client';
+import * as QRCode from 'qrcode';
+import * as speakeasy from 'speakeasy';
+import appConfig from '../../../config/app.config';
+import { PrismaService } from '../../../prisma/prisma.service';
+import { Role } from '../../guard/role/role.enum';
+import { ArrayHelper } from '../../helper/array.helper';
 
 @Injectable()
 export class UserRepository {
@@ -33,6 +33,48 @@ export class UserRepository {
       },
     });
     return user;
+  }
+
+  // get all clients
+  async getAllClients() {
+    try {
+      const clients = await this.prisma.user.findMany({
+        where: {
+          type: UserType.CLIENT,
+        },
+      });
+      return {
+        success: true,
+        message: 'All clients fetched successfully',
+        data: clients,
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: error.message,
+      };
+    }
+  }
+
+  // get all editors
+  async getAllEditors() {
+    try {
+      const editors = await this.prisma.user.findMany({
+        where: {
+          type: UserType.EDITOR,
+        },
+      });
+      return {
+        success: true,
+        message: 'All editors fetched successfully',
+        data: editors,
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: error.message,
+      };
+    }
   }
 
   /**

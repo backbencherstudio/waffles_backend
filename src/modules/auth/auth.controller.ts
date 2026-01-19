@@ -89,6 +89,40 @@ export class AuthController {
     }
   }
 
+  // get all clients
+  @ApiOperation({ summary: 'Get all clients' })
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
+  @Get('clients')
+  async getAllClients() {
+    try {
+      const clients = await this.authService.getAllClients();
+      return clients;
+    } catch (error) {
+      return {
+        success: false,
+        message: 'Failed to fetch clients',
+      };
+    }
+  }
+
+  // get all editors
+  @ApiOperation({ summary: 'Get all editors' })
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
+  @Get('editors')
+  async getAllEditors() {
+    try {
+      const editors = await this.authService.getAllEditors();
+      return editors;
+    } catch (error) {
+      return {
+        success: false,
+        message: 'Failed to fetch editors',
+      };
+    }
+  }
+
   // *login user
   @ApiOperation({ summary: 'Login user' })
   @UseGuards(LocalAuthGuard)

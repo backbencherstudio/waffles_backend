@@ -283,29 +283,29 @@ model Bid {
 }
 
 model Hire {
-  id              String        @id @default(uuid())
-  projectTitle    String
-  videoCategory   VideoCategory
-  projectPhoto    String?
-  videoDuration   ContentLength
-  description     String
-  projectBudget   Float
-  projectDuration String
-  totalAmount     Float
-  user_id         String
-
-  user               User                 @relation(fields: [user_id], references: [id])
-  status             JobStatus            @default(PENDING)
-  softwarePreference SoftwarePreference[]
-  attachments        Attachment[]
+  id                  String               @id @default(uuid())
+  project_title       String
+  video_category      VideoCategory
+  project_photo       String?
+  video_duration      ContentLength
+  description         String
+  project_budget      Float
+  project_duration    String
+  total_amount        Float
+  
+  hire_profile_id     String?
+  
+  user_id             String
+  user                User                 @relation(fields: [user_id], references: [id])
+  status              JobStatus            @default(PENDING)
+  software_preference SoftwarePreference[]
+  attachments         Attachment[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@map("hires")
 }
-
-
 
 model Role {
   id         String    @id @default(cuid())

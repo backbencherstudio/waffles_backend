@@ -18,6 +18,7 @@ export class HireService {
     dto: CreateHireDto,
     files: Express.Multer.File[],
     projectPhoto?: Express.Multer.File,
+    hireProfileId?: string,
   ) {
     const attachmentPath = appConfig().storageUrl.attachment;
     const photoPath = appConfig().storageUrl.jobPhoto;
@@ -60,8 +61,9 @@ export class HireService {
       const hire = await tx.hire.create({
         data: {
           ...dto,
-          user_id: userId,
-          projectPhoto: projectPhotoName,
+          user: { connect: { id: userId } },
+          project_photo: projectPhotoName,
+          hire_profile_id: hireProfileId,
           attachments: {
             connect: createdAttachments.map((a) => ({ id: a.id })),
           },
@@ -94,7 +96,7 @@ export class HireService {
 
       if (q) {
         where.OR = [
-          { projectTitle: { contains: q, mode: 'insensitive' } },
+          { project_title: { contains: q, mode: 'insensitive' } },
           { description: { contains: q, mode: 'insensitive' } },
         ];
       }
@@ -125,8 +127,8 @@ export class HireService {
         message: 'All hire records fetched successfully',
         data: hires.map((hire) => ({
           ...hire,
-          projectPhotoUrl: hire.projectPhoto
-            ? SojebStorage.url(photoPath + hire.projectPhoto)
+          project_photo_url: hire.project_photo
+            ? SojebStorage.url(photoPath + hire.project_photo)
             : null,
           attachments: hire.attachments.map((att) => ({
             ...att,
@@ -171,7 +173,7 @@ export class HireService {
   private mapUrls(hire: any, photoPath: string, attPath: string) {
     const mappedHire = {
       ...hire,
-      projectPhotoUrl: hire.projectPhoto
+      project_photo_url: hire.projectPhoto
         ? SojebStorage.url(photoPath + hire.projectPhoto)
         : null,
       attachments: hire.attachments?.map((att) => ({
