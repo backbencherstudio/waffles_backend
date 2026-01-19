@@ -99,6 +99,7 @@ model User {
   payment_transactions PaymentTransaction[]
   jobs                 JOB[]
   bids                 Bid[]
+  hires                Hire[]
 
   @@map("users")
 }
@@ -219,6 +220,28 @@ enum JobStatus {
   CANCEL
 }
 
+enum VideoCategory {
+  LONG_FORM
+  SHORT_FORM
+  THUMBNAIL
+  ADS_UGC
+  PODCAST
+  WEDDING_EVENT
+  COLOR_AUDIO
+  CAPTION_SUBTITLE
+}
+
+enum SoftwarePreference {
+  FINAL_CUT_PRO
+  DAVINCI_RESOLVE
+  SONY_VEGAS
+  ADOBE_PREMIERE_PRO
+  FILMORA
+  AFTER_EFFECTS
+  CAPCUT
+  ANY
+}
+
 model JOB {
   id               String        @id @default(cuid())
   job_title        String?
@@ -258,6 +281,31 @@ model Bid {
   user_id String?
   user    User?   @relation(fields: [user_id], references: [id])
 }
+
+model Hire {
+  id              String        @id @default(uuid())
+  projectTitle    String
+  videoCategory   VideoCategory
+  projectPhoto    String?
+  videoDuration   ContentLength
+  description     String
+  projectBudget   Float
+  projectDuration String
+  totalAmount     Float
+  user_id         String
+
+  user               User                 @relation(fields: [user_id], references: [id])
+  status             JobStatus            @default(PENDING)
+  softwarePreference SoftwarePreference[]
+  attachments        Attachment[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("hires")
+}
+
+
 
 model Role {
   id         String    @id @default(cuid())
@@ -457,6 +505,8 @@ model Attachment {
 
   messages Message[]
   jobs     JOB[]
+  hire     Hire?     @relation(fields: [hire_id], references: [id])
+  hire_id  String?
 
   @@map("attachments")
 }

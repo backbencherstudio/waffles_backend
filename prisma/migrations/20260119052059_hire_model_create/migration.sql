@@ -1,4 +1,25 @@
 -- CreateEnum
+CREATE TYPE "UserType" AS ENUM ('ADMIN', 'CLIENT', 'EDITOR');
+
+-- CreateEnum
+CREATE TYPE "ContentLength" AS ENUM ('1-5', '5-10', '10-15', '15-20', '20-30', '30-40', '40-50', '50-60', '60-120', '120+');
+
+-- CreateEnum
+CREATE TYPE "JobCategory" AS ENUM ('LONG_FORM_VIDEO', 'SHORTS_REELS_TIKTOKS', 'THUMBNAILS', 'ADS_UGC', 'PODCASTS', 'WEDDINGS_EVENTS', 'COLOR_AUDIO', 'CAPTIONS_SUBTITLES');
+
+-- CreateEnum
+CREATE TYPE "Platform" AS ENUM ('YOUTUBE', 'FACEBOOK', 'X', 'INSTAGRAM', 'TIKTOK', 'LINKEDIN', 'SNAPCHATS', 'PINTEREST', 'VIMEO', 'TWITCH', 'THREADS', 'OTHER');
+
+-- CreateEnum
+CREATE TYPE "JobStatus" AS ENUM ('PENDING', 'IN_PROGRESS', 'COMPLETED', 'CANCEL');
+
+-- CreateEnum
+CREATE TYPE "VideoCategory" AS ENUM ('LONG_FORM', 'SHORT_FORM', 'THUMBNAIL', 'ADS_UGC', 'PODCAST', 'WEDDING_EVENT', 'COLOR_AUDIO', 'CAPTION_SUBTITLE');
+
+-- CreateEnum
+CREATE TYPE "SoftwarePreference" AS ENUM ('FINAL_CUT_PRO', 'DAVINCI_RESOLVE', 'SONY_VEGAS', 'ADOBE_PREMIERE_PRO', 'FILMORA', 'AFTER_EFFECTS', 'CAPCUT', 'ANY');
+
+-- CreateEnum
 CREATE TYPE "MessageStatus" AS ENUM ('PENDING', 'SENT', 'DELIVERED', 'READ');
 
 -- CreateTable
@@ -28,16 +49,21 @@ CREATE TABLE "users" (
     "updated_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "deleted_at" TIMESTAMP(3),
     "status" SMALLINT DEFAULT 1,
-    "approved_at" TIMESTAMP(3),
-    "availability" TEXT,
-    "email" TEXT,
-    "username" TEXT,
     "name" VARCHAR(255),
+    "email" TEXT,
+    "password" VARCHAR(255),
+    "avatar" TEXT,
+    "bio" TEXT,
+    "location" VARCHAR(255),
+    "language" TEXT[] DEFAULT ARRAY[]::TEXT[],
+    "about_me" TEXT,
+    "billing_id" TEXT,
+    "type" "UserType" DEFAULT 'CLIENT',
+    "email_verified_at" TIMESTAMP(3),
     "first_name" VARCHAR(255),
     "last_name" VARCHAR(255),
-    "password" VARCHAR(255),
     "domain" TEXT,
-    "avatar" TEXT,
+    "username" TEXT,
     "phone_number" TEXT,
     "country" TEXT,
     "state" TEXT,
@@ -46,9 +72,8 @@ CREATE TABLE "users" (
     "zip_code" TEXT,
     "gender" TEXT,
     "date_of_birth" DATE,
-    "billing_id" TEXT,
-    "type" TEXT DEFAULT 'user',
-    "email_verified_at" TIMESTAMP(3),
+    "approved_at" TIMESTAMP(3),
+    "availability" TEXT,
     "is_two_factor_enabled" INTEGER DEFAULT 0,
     "two_factor_secret" TEXT,
 
@@ -65,8 +90,112 @@ CREATE TABLE "ucodes" (
     "token" TEXT,
     "email" TEXT,
     "expired_at" TIMESTAMP(3),
+    "verified_at" TIMESTAMP(3),
 
     CONSTRAINT "ucodes_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "portfolios" (
+    "id" TEXT NOT NULL,
+    "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updated_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "deleted_at" TIMESTAMP(3),
+    "status" SMALLINT DEFAULT 1,
+    "title" TEXT,
+    "project_type" TEXT[],
+    "description" TEXT,
+    "thumbnail" TEXT,
+    "user_id" TEXT NOT NULL,
+
+    CONSTRAINT "portfolios_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "educations" (
+    "id" TEXT NOT NULL,
+    "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updated_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "deleted_at" TIMESTAMP(3),
+    "status" SMALLINT DEFAULT 1,
+    "course_name" TEXT NOT NULL,
+    "subject" TEXT NOT NULL,
+    "passing_year" INTEGER NOT NULL,
+    "user_id" TEXT NOT NULL,
+
+    CONSTRAINT "educations_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "skills" (
+    "id" TEXT NOT NULL,
+    "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updated_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "deleted_at" TIMESTAMP(3),
+    "skill_name" TEXT[],
+    "user_id" TEXT NOT NULL,
+
+    CONSTRAINT "skills_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "JOB" (
+    "id" TEXT NOT NULL,
+    "job_title" TEXT,
+    "job_description" TEXT,
+    "job_photo" TEXT,
+    "content_length" "ContentLength" NOT NULL,
+    "project_budget" DOUBLE PRECISION,
+    "job_category" "JobCategory" NOT NULL,
+    "project_duration" TEXT,
+    "platform" "Platform" NOT NULL,
+    "skill" TEXT,
+    "reference" TEXT,
+    "total_payment" DOUBLE PRECISION,
+    "fileId" TEXT,
+    "status" "JobStatus" NOT NULL DEFAULT 'PENDING',
+    "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updated_at" TIMESTAMP(3) NOT NULL,
+    "deleted_at" TIMESTAMP(3),
+    "user_id" TEXT,
+
+    CONSTRAINT "JOB_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "Bid" (
+    "id" TEXT NOT NULL,
+    "jobId" TEXT,
+    "bidder" TEXT,
+    "amount" DOUBLE PRECISION,
+    "message" TEXT,
+    "status" TEXT NOT NULL DEFAULT 'pending',
+    "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updated_at" TIMESTAMP(3) NOT NULL,
+    "deleted_at" TIMESTAMP(3),
+    "user_id" TEXT,
+
+    CONSTRAINT "Bid_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "Hire" (
+    "id" TEXT NOT NULL,
+    "projectTitle" TEXT NOT NULL,
+    "videoCategory" "VideoCategory" NOT NULL,
+    "projectPhoto" TEXT,
+    "videoDuration" "ContentLength" NOT NULL,
+    "description" TEXT NOT NULL,
+    "projectBudget" DOUBLE PRECISION NOT NULL,
+    "projectDuration" TEXT NOT NULL,
+    "totalAmount" DOUBLE PRECISION NOT NULL,
+    "user_id" TEXT NOT NULL,
+    "status" "JobStatus" NOT NULL DEFAULT 'PENDING',
+    "softwarePreference" "SoftwarePreference"[],
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "Hire_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
@@ -211,6 +340,7 @@ CREATE TABLE "attachments" (
     "size" INTEGER,
     "file" TEXT,
     "file_alt" TEXT,
+    "hire_id" TEXT,
 
     CONSTRAINT "attachments_pkey" PRIMARY KEY ("id")
 );
@@ -325,6 +455,14 @@ CREATE TABLE "_PermissionToRole" (
     CONSTRAINT "_PermissionToRole_AB_pkey" PRIMARY KEY ("A","B")
 );
 
+-- CreateTable
+CREATE TABLE "_AttachmentToJOB" (
+    "A" TEXT NOT NULL,
+    "B" TEXT NOT NULL,
+
+    CONSTRAINT "_AttachmentToJOB_AB_pkey" PRIMARY KEY ("A","B")
+);
+
 -- CreateIndex
 CREATE UNIQUE INDEX "accounts_provider_provider_account_id_key" ON "accounts"("provider", "provider_account_id");
 
@@ -332,10 +470,10 @@ CREATE UNIQUE INDEX "accounts_provider_provider_account_id_key" ON "accounts"("p
 CREATE UNIQUE INDEX "users_email_key" ON "users"("email");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "users_username_key" ON "users"("username");
+CREATE UNIQUE INDEX "users_domain_key" ON "users"("domain");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "users_domain_key" ON "users"("domain");
+CREATE UNIQUE INDEX "users_username_key" ON "users"("username");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "settings_key_key" ON "settings"("key");
@@ -343,11 +481,35 @@ CREATE UNIQUE INDEX "settings_key_key" ON "settings"("key");
 -- CreateIndex
 CREATE INDEX "_PermissionToRole_B_index" ON "_PermissionToRole"("B");
 
+-- CreateIndex
+CREATE INDEX "_AttachmentToJOB_B_index" ON "_AttachmentToJOB"("B");
+
 -- AddForeignKey
 ALTER TABLE "accounts" ADD CONSTRAINT "accounts_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "ucodes" ADD CONSTRAINT "ucodes_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "portfolios" ADD CONSTRAINT "portfolios_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "educations" ADD CONSTRAINT "educations_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "skills" ADD CONSTRAINT "skills_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "JOB" ADD CONSTRAINT "JOB_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Bid" ADD CONSTRAINT "Bid_jobId_fkey" FOREIGN KEY ("jobId") REFERENCES "JOB"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Bid" ADD CONSTRAINT "Bid_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Hire" ADD CONSTRAINT "Hire_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "roles" ADD CONSTRAINT "roles_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
@@ -392,6 +554,9 @@ ALTER TABLE "messages" ADD CONSTRAINT "messages_conversation_id_fkey" FOREIGN KE
 ALTER TABLE "messages" ADD CONSTRAINT "messages_attachment_id_fkey" FOREIGN KEY ("attachment_id") REFERENCES "attachments"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
+ALTER TABLE "attachments" ADD CONSTRAINT "attachments_hire_id_fkey" FOREIGN KEY ("hire_id") REFERENCES "Hire"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
 ALTER TABLE "conversations" ADD CONSTRAINT "conversations_creator_id_fkey" FOREIGN KEY ("creator_id") REFERENCES "users"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
@@ -408,3 +573,9 @@ ALTER TABLE "_PermissionToRole" ADD CONSTRAINT "_PermissionToRole_A_fkey" FOREIG
 
 -- AddForeignKey
 ALTER TABLE "_PermissionToRole" ADD CONSTRAINT "_PermissionToRole_B_fkey" FOREIGN KEY ("B") REFERENCES "roles"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "_AttachmentToJOB" ADD CONSTRAINT "_AttachmentToJOB_A_fkey" FOREIGN KEY ("A") REFERENCES "attachments"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "_AttachmentToJOB" ADD CONSTRAINT "_AttachmentToJOB_B_fkey" FOREIGN KEY ("B") REFERENCES "JOB"("id") ON DELETE CASCADE ON UPDATE CASCADE;
