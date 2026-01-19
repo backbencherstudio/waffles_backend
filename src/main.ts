@@ -13,21 +13,32 @@ import { CustomExceptionFilter } from './common/exception/custom-exception.filte
 import { SojebStorage } from './common/lib/Disk/SojebStorage';
 import { Prisma } from 'prisma/generated';
 import { PrismaExceptionFilter } from './common/exception/prisma-exception.filter';
+import appConfig from './config/app.config';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule, {
     rawBody: true,
   });
 
+  // Handle raw body for webhooks
+  // app.use('/payment/stripe/webhook', express.raw({ type: 'application/json' }));
+
   app.setGlobalPrefix('api');
   app.enableCors();
   app.use(helmet());
-  
-  app.useStaticAssets(join(process.cwd(), 'public'), {
+  // Enable it, if special charactrers not encoding perfectly
+  // app.use((req, res, next) => {
+  //   // Only force content-type for specific API routes, not Swagger or assets
+  //   if (req.path.startsWith('/api') && !req.path.startsWith('/api/docs')) {
+  //     res.setHeader('Content-Type', 'application/json; charset=utf-8');
+  //   }
+  //   next();
+  // });
+  app.useStaticAssets(join(__dirname, '..', 'public'), {
     index: false,
     prefix: '/public',
   });
-  app.useStaticAssets(join(process.cwd(), 'public/storage'), {
+  app.useStaticAssets(join(__dirname, '..', 'public/storage'), {
     index: false,
     prefix: '/storage',
   });
