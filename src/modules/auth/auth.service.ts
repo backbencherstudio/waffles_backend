@@ -56,7 +56,7 @@ export class AuthService {
 
       if (user.avatar) {
         user['avatar_url'] = SojebStorage.url(
-          appConfig().storageUrl.avatar + user.avatar,
+          appConfig().storageUrl.avatar + '/' + user.avatar,
         );
       }
 
@@ -699,14 +699,14 @@ export class AuthService {
         });
         if (oldImage.avatar) {
           await SojebStorage.delete(
-            appConfig().storageUrl.avatar + oldImage.avatar,
+            appConfig().storageUrl.avatar + '/' + oldImage.avatar,
           );
         }
 
         // upload file
         const fileName = `${StringHelper.randomString()}${image.originalname}`;
         await SojebStorage.put(
-          appConfig().storageUrl.avatar + fileName,
+          appConfig().storageUrl.avatar + '/' + fileName,
           image.buffer,
         );
 

@@ -197,12 +197,12 @@ export class MessageService {
       for (const message of messages) {
         if (message.sender && message.sender.avatar) {
           message.sender['avatar_url'] = SojebStorage.url(
-            appConfig().storageUrl.avatar + message.sender.avatar,
+            appConfig().storageUrl.avatar + '/' + message.sender.avatar,
           );
         }
         if (message.receiver && message.receiver.avatar) {
           message.receiver['avatar_url'] = SojebStorage.url(
-            appConfig().storageUrl.avatar + message.receiver.avatar,
+            appConfig().storageUrl.avatar + '/' + message.receiver.avatar,
           );
         }
       }

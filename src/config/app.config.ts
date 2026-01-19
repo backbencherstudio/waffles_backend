@@ -79,13 +79,13 @@ export default () => ({
    */
   storageUrl: {
     rootUrl: './public/storage',
-    rootUrlPublic: '/public/storage',
+    rootUrlPublic: '/storage',
     // storage directory
     package: '/package',
     destination: '/destination',
     blog: '/blog',
-    avatar: 'avatar',
-    portfolio: 'portfolio',
+    avatar: '/avatar',
+    portfolio: '/portfolio',
     websiteInfo: '/website-info',
     // chat
     attachment: '/attachment',
