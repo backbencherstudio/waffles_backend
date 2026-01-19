@@ -11,6 +11,7 @@ import { IoAdapter } from '@nestjs/platform-socket.io';
 import { AppModule } from './app.module';
 import { CustomExceptionFilter } from './common/exception/custom-exception.filter';
 import { SojebStorage } from './common/lib/Disk/SojebStorage';
+import { Prisma } from 'prisma/generated';
 import { PrismaExceptionFilter } from './common/exception/prisma-exception.filter';
 import appConfig from './config/app.config';
 
