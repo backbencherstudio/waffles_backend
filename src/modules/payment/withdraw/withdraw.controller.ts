@@ -8,9 +8,11 @@ import {
   Delete,
   UseGuards,
   Req,
+  BadRequestException,
 } from '@nestjs/common';
 import { WithdrawService } from './withdraw.service';
 import { CreateWithdrawDto } from './dto/create-withdraw.dto';
+import { CreateDepositDto } from './dto/create-deposit.dto';
 import { UpdateWithdrawDto } from './dto/update-withdraw.dto';
 import { JwtAuthGuard } from 'src/modules/auth/guards/jwt-auth.guard';
 
@@ -71,6 +73,8 @@ export class WithdrawController {
       data: result.data,
     };
   }
+
+  
 
   //check Connect Account Balance
   @Get('account-balance')

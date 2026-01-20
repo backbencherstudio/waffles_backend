@@ -3,6 +3,7 @@ import { CreateWithdrawDto } from './dto/create-withdraw.dto';
 import { UpdateWithdrawDto } from './dto/update-withdraw.dto';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { StripePayment } from 'src/common/lib/Payment/stripe/StripePayment';
+import { CreateDepositDto } from './dto/create-deposit.dto';
 
 @Injectable()
 export class WithdrawService {
