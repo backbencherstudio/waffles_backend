@@ -109,7 +109,7 @@ export class AuthController {
   // get all editors
   @ApiOperation({ summary: 'Get all editors' })
   @ApiBearerAuth()
-  @UseGuards(JwtAuthGuard)
+  // @UseGuards(JwtAuthGuard)
   @Get('editors')
   async getAllEditors() {
     try {

@@ -79,7 +79,7 @@ export class HireService {
     });
   }
 
-  async getAllHires(params: {
+  async getAllHiresClient(params: {
     page: number;
     limit: number;
     q: string;
@@ -110,32 +110,26 @@ export class HireService {
           where,
           skip,
           take: limit,
-          include: {
-            attachments: true,
-            user: { select: { id: true, name: true, email: true } },
-          },
           orderBy: { createdAt: 'desc' },
         }),
         this.prisma.hire.count({ where }),
       ]);
 
       const photoPath = appConfig().storageUrl.jobPhoto;
-      const attachmentPath = appConfig().storageUrl.attachment;
 
       return {
         success: true,
-        message: 'All hire records fetched successfully',
+        message: 'Client hire records fetched successfully',
         data: hires.map((hire) => ({
-          ...hire,
+          id: hire.id,
+          project_title: hire.project_title,
+          video_duration: hire.video_duration,
+          project_budget: hire.project_budget,
+          project_duration: hire.project_duration,
+          user_id: hire.user_id,
           project_photo_url: hire.project_photo
             ? SojebStorage.url(photoPath + hire.project_photo)
             : null,
-          attachments: hire.attachments.map((att) => ({
-            ...att,
-            file_url: att.file
-              ? SojebStorage.url(attachmentPath + att.file)
-              : null,
-          })),
         })),
         meta: {
           total,
@@ -145,10 +139,73 @@ export class HireService {
         },
       };
     } catch (error) {
-      console.error('Error fetching hires:', error);
-      throw new InternalServerErrorException(
-        'Something went wrong while fetching hires',
-      );
+      console.error('Error fetching client hires:', error);
+      throw new InternalServerErrorException('Something went wrong');
+    }
+  }
+
+  async getAllHiresEditor(params: {
+    page: number;
+    limit: number;
+    q: string;
+    status?: string;
+    userId: string;
+  }) {
+    const { page, limit, q, status, userId } = params;
+    const skip = (page - 1) * limit;
+
+    try {
+      const where: Prisma.HireWhereInput = {
+        hire_profile_id: userId, // Editor-er profile ID filter kora hoyeche
+      };
+
+      if (q) {
+        where.OR = [
+          { project_title: { contains: q, mode: 'insensitive' } },
+          { description: { contains: q, mode: 'insensitive' } },
+        ];
+      }
+
+      if (status && Object.values(JobStatus).includes(status as JobStatus)) {
+        where.status = status as JobStatus;
+      }
+
+      const [hires, total] = await Promise.all([
+        this.prisma.hire.findMany({
+          where,
+          skip,
+          take: limit,
+          orderBy: { createdAt: 'desc' },
+        }),
+        this.prisma.hire.count({ where }),
+      ]);
+
+      const photoPath = appConfig().storageUrl.jobPhoto;
+
+      return {
+        success: true,
+        message: 'Editor hire records fetched successfully',
+        data: hires.map((hire) => ({
+          id: hire.id,
+          project_title: hire.project_title,
+          video_duration: hire.video_duration,
+          project_budget: hire.project_budget,
+          project_duration: hire.project_duration,
+          user_id: hire.user_id,
+          project_photo_url: hire.project_photo
+            ? SojebStorage.url(photoPath + hire.project_photo)
+            : null,
+        })),
+        meta: {
+          total,
+          page,
+          limit,
+          totalPages: Math.ceil(total / limit),
+        },
+      };
+    } catch (error) {
+      console.error('Error fetching editor hires:', error);
+      throw new InternalServerErrorException('Something went wrong');
     }
   }
 

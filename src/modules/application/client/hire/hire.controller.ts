@@ -56,9 +56,9 @@ export class HireController {
     );
   }
 
-  @Get('all')
+  @Get('all/client')
   @UseGuards(JwtAuthGuard)
-  async findAll(
+  async findAllClient(
     @Req() req: any,
     @Query('page') page = '1',
     @Query('limit') limit = '10',
@@ -67,7 +67,27 @@ export class HireController {
   ) {
     const userId = req.user?.userId;
     if (!userId) throw new BadRequestException('User id not found in request');
-    return this.hireService.getAllHires({
+    return this.hireService.getAllHiresClient({
+      page: parseInt(page, 10),
+      limit: parseInt(limit, 10),
+      q,
+      status,
+      userId,
+    });
+  }
+
+  @Get('all/editor')
+  @UseGuards(JwtAuthGuard)
+  async findAllEditor(
+    @Req() req: any,
+    @Query('page') page = '1',
+    @Query('limit') limit = '10',
+    @Query('q') q = '',
+    @Query('status') status?: string,
+  ) {
+    const userId = req.user?.userId;
+    if (!userId) throw new BadRequestException('User id not found in request');
+    return this.hireService.getAllHiresEditor({
       page: parseInt(page, 10),
       limit: parseInt(limit, 10),
       q,
