@@ -17,6 +17,10 @@ export class WithdrawService {
     email: string) {
 
     // create stripe connect account
+    if (!userId) {
+      throw new BadRequestException('Invalid user id for Stripe Connect creation');
+    }
+
     const user = await this.prisma.user.findUnique({
       where: { id: userId }
     });
@@ -74,6 +78,10 @@ export class WithdrawService {
   ) {
 
     const { amount, currency = 'usd' } = createWithdrawDto; 
+
+    if (!userId) {
+      throw new BadRequestException('Invalid user id for withdrawal');
+    }
  
     const user = await this.prisma.user.findUnique({
       where: { id: userId }
@@ -216,7 +224,11 @@ export class WithdrawService {
     if (!user) {
       throw new NotFoundException('User not found');
     }
-    return user;
+    return {
+      success: true,
+      message: 'Account info retrieved successfully',
+      data: user
+    }
   }
 
 

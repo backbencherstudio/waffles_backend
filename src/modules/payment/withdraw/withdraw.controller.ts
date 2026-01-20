@@ -18,12 +18,14 @@ import { JwtAuthGuard } from 'src/modules/auth/guards/jwt-auth.guard';
 @Controller('withdraw')
 export class WithdrawController {
   constructor(private readonly withdrawService: WithdrawService) {}
-
+  
   // Stripe Account Connect
   @Post('stripe-connect-account')
   async createStripeConnectAccount(@Req() req: any) {
-    const userId = req.user.id;
+    const userId = req.user.userId;
     const email = req.user.email;
+
+    console.log(req.user);
 
     const result = await this.withdrawService.createStripeConnectAccount(
       userId,
@@ -73,7 +75,7 @@ export class WithdrawController {
   //check Connect Account Balance
   @Get('account-balance')
   async getConnectedAccountBalance(@Req() req: any) {
-    const userId = req.user.id;
+    const userId = req.user.userId;
     const result =
       await this.withdrawService.getConnectedAccountBalance(userId);
 
@@ -87,7 +89,7 @@ export class WithdrawController {
   // withdraw history
   @Get('history')
   async getWithdrawHistory(@Req() req: any) {
-    const userId = req.user.id;
+    const userId = req.user.userId;
     const result = await this.withdrawService.getWithdrawHistory(userId);
     return {
       success: true,
@@ -97,15 +99,14 @@ export class WithdrawController {
   }
 
   // account balance
-  @Get('balance')
+  @Get('account-info')
   async getAccountBalance(@Req() req: any) {
-    const userId = req.user.id;
-    const result =
-      await this.withdrawService.getConnectedAccountBalance(userId);
-    return {
-      success: true,
-      message: 'Account balance retrieved successfully',
-      data: result,
-    };
+    const userId = req.user.userId;
+    return await this.withdrawService.getAccountInfo(userId);
+    
   }
+
+
+  
 }
+
