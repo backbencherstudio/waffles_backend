@@ -6,6 +6,7 @@ import {
   Param,
   Delete,
   UseGuards,
+  Req,
 } from '@nestjs/common';
 import { ConversationService } from './conversation.service';
 import { CreateConversationDto } from './dto/create-conversation.dto';
@@ -22,63 +23,39 @@ import { Roles } from '../../../common/guard/role/roles.decorator';
 export class ConversationController {
   constructor(private readonly conversationService: ConversationService) {}
 
-  @ApiOperation({ summary: 'Create conversation' })
+
+
+  // *create conversation
   @Post()
-  async create(@Body() createConversationDto: CreateConversationDto) {
-    try {
-      const conversation = await this.conversationService.create(
-        createConversationDto,
-      );
-      return conversation;
-    } catch (error) {
-      return {
-        success: false,
-        message: error.message,
-      };
-    }
+  async create(
+    @Body() createConversationDto: CreateConversationDto,
+    @Req() req: any,
+  ) {
+    const userId = req.user.userId;
+    return this.conversationService.create(createConversationDto, userId);
   }
 
-  // @Roles(Role.ADMIN)
-  @ApiOperation({ summary: 'Get all conversations' })
-  @Get()
-  async findAll() {
-    try {
-      const conversations = await this.conversationService.findAll();
-      return conversations;
-    } catch (error) {
-      return {
-        success: false,
-        message: error.message,
-      };
-    }
+   //  *conversation list of user
+  @Get('conversation-list') 
+  async findAll(@Req() req) { 
+    const user = req.user.userId; 
+    return this.conversationService.findAll(user);
   }
-
-  @ApiOperation({ summary: 'Get a conversation by id' })
-  @Get(':id')
+ 
+  // get conversation by id 
+  @Get('conversationById/:id')
   async findOne(@Param('id') id: string) {
-    try {
-      const conversation = await this.conversationService.findOne(id);
-      return conversation;
-    } catch (error) {
-      return {
-        success: false,
-        message: error.message,
-      };
-    }
+    return this.conversationService.findOne(id);
   }
 
-  @Roles(Role.ADMIN)
-  @ApiOperation({ summary: 'Delete a conversation' })
+
+  // *delete conversation
   @Delete(':id')
   async remove(@Param('id') id: string) {
-    try {
-      const conversation = await this.conversationService.remove(id);
-      return conversation;
-    } catch (error) {
-      return {
-        success: false,
-        message: error.message,
-      };
-    }
+    return this.conversationService.remove(id);
   }
+
+
+
+
 }

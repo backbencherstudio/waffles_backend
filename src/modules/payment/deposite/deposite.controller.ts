@@ -1,7 +1,7 @@
 import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Req } from '@nestjs/common';
 import { DepositeService } from './deposite.service';
 
-import { UpdateDepositeDto } from './dto/update-deposite.dto';
+import { UpdateDepositDto } from './dto/update-deposite.dto';
 import { CreateDepositDto } from './dto/create-deposite.dto';
 import { JwtAuthGuard } from 'src/modules/auth/guards/jwt-auth.guard';
 

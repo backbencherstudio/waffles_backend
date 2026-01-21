@@ -93,10 +93,12 @@ model User {
   is_two_factor_enabled     Int?           @default(0)
   two_factor_secret         String?
   accounts                  Account[]
-  creator_conversations     Conversation[] @relation("creator")
-  participant_conversations Conversation[] @relation("participant")
-  receiver_messages         Message[]      @relation("receiver")
-  sender_messages           Message[]      @relation("sender")
+
+  // --- Conversation & Messaging ---
+  participants Participant[] @relation("participantUser")
+
+  
+ 
   receiver_notifications    Notification[] @relation("receiver")
   sender_notifications      Notification[] @relation("sender")
 
@@ -251,7 +253,7 @@ model JOB {
   deleted_at       DateTime?
   user_id          String?
   user             User?         @relation(fields: [user_id], references: [id])
-  attachment       Attachment[]
+
 }
 
 model Bid {
@@ -421,74 +423,77 @@ model PaymentTransaction {
 // ---------Start Chat schema---------
 
 enum MessageStatus {
-  PENDING
   SENT
   DELIVERED
   READ
 }
 
-// message is used for conversation
-model Message {
-  id         String    @id @default(cuid())
-  created_at DateTime  @default(now())
-  updated_at DateTime  @default(now())
-  deleted_at DateTime?
-
-  status MessageStatus? @default(PENDING)
-
-  sender_id String?
-  sender    User?   @relation("sender", fields: [sender_id], references: [id])
-
-  receiver_id String?
-  receiver    User?   @relation("receiver", fields: [receiver_id], references: [id])
-
-  conversation_id String?
-  conversation    Conversation? @relation(fields: [conversation_id], references: [id], onDelete: Cascade)
-
-  attachment_id String?
-  attachment    Attachment? @relation(fields: [attachment_id], references: [id])
-
-  message String?
-
-  @@map("messages")
-}
-
-// this table stores attachment of message
-model Attachment {
-  id         String    @id @default(cuid())
-  created_at DateTime  @default(now())
-  updated_at DateTime  @default(now())
-  deleted_at DateTime?
-
-  name     String?
-  type     String?
-  size     Int?
-  file     String?
-  file_alt String?
-
-  messages Message[]
-  jobs     JOB[]
-
-  @@map("attachments")
-}
-
-// this table stores conversation
 model Conversation {
   id         String    @id @default(cuid())
   created_at DateTime  @default(now())
   updated_at DateTime  @default(now())
   deleted_at DateTime?
 
-  creator_id String?
-  creator    User?   @relation("creator", fields: [creator_id], references: [id])
-
-  participant_id String?
-  participant    User?   @relation("participant", fields: [participant_id], references: [id])
-
-  messages Message[]
+  participant Participant[]
+  messages    Message[]
 
   @@map("conversations")
 }
+
+
+model Participant {
+  id         String    @id @default(cuid())
+  created_at DateTime  @default(now())
+  updated_at DateTime  @default(now())
+  deleted_at DateTime?
+
+  conversation_id String?
+  conversation    Conversation? @relation(fields: [conversation_id], references: [id], onDelete: Cascade)
+
+  user_id String?
+  user    User?   @relation("participantUser", fields: [user_id], references: [id], onDelete: Cascade)
+
+  role String? @default("participant")
+  joined_at DateTime? @default(now())
+
+  @@unique([conversation_id, user_id])
+  @@map("participants")
+}
+
+model Message {
+  id         String    @id @default(cuid())
+  created_at DateTime  @default(now())
+  updated_at DateTime  @default(now())
+  deleted_at DateTime?
+
+  conversation_id String?
+  conversation    Conversation? @relation(fields: [conversation_id], references: [id], onDelete: Cascade)
+
+  sender_id   String?
+  receiver_id String?
+  message     String?   @db.Text
+  status      MessageStatus? @default(SENT)
+  read_at     DateTime?
+
+  @@map("messages")
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 // ---------End Chat schema---------
 
