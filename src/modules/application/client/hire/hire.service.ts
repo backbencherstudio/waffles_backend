@@ -71,6 +71,8 @@ export class HireService {
         include: { attachments: true, user: true },
       });
 
+      //
+
       return {
         success: true,
         message: 'Hire request created successfully',
