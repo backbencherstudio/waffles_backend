@@ -8,6 +8,7 @@ import {
 } from 'class-validator';
 import {
   ContentLength,
+  JobStatus,
   SoftwarePreference,
   VideoCategory,
 } from 'prisma/generated';
@@ -29,8 +30,9 @@ export class CreateHireDto {
   @Transform(({ value }) => parseFloat(value))
   project_budget: number;
 
-  @IsString()
-  project_duration: string;
+  @IsNumber()
+  @Transform(({ value }) => parseFloat(value))
+  project_duration: number;
 
   @IsNumber()
   @Transform(({ value }) => parseFloat(value))
@@ -59,4 +61,8 @@ export class CreateHireDto {
   @IsArray()
   @IsEnum(SoftwarePreference, { each: true })
   software_preference?: SoftwarePreference[];
+
+  @IsOptional()
+  @IsEnum(JobStatus)
+  status?: JobStatus;
 }

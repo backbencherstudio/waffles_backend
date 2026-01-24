@@ -218,6 +218,7 @@ enum JobStatus {
   IN_PROGRESS
   COMPLETED
   CANCEL
+  LATE
 }
 
 enum VideoCategory {
@@ -267,13 +268,15 @@ model JOB {
 }
 
 model Bid {
-  id         String    @id @default(cuid())
-  job        JOB?      @relation(fields: [jobId], references: [id])
-  jobId      String?
-  bidder     String?
-  amount     Float?
-  message    String?
-  status     String    @default("pending")
+  id       String    @id @default(cuid())
+  amount   Float?
+  req_date DateTime?
+  message  String?
+  jobId    String?
+
+  job    JOB?   @relation(fields: [jobId], references: [id])
+  status String @default("PENDING")
+
   created_at DateTime  @default(now())
   updated_at DateTime  @updatedAt
   deleted_at DateTime?
@@ -283,26 +286,27 @@ model Bid {
 }
 
 model Hire {
-  id                  String               @id @default(uuid())
-  project_title       String
-  video_category      VideoCategory
-  project_photo       String?
-  video_duration      ContentLength
-  description         String
-  project_budget      Float
-  project_duration    String
-  total_amount        Float
-  
-  hire_profile_id     String?
-  
+  id               String        @id @default(cuid())
+  project_title    String
+  video_category   VideoCategory
+  project_photo    String?
+  video_duration   ContentLength
+  description      String
+  project_budget   Float?
+  project_duration Float?
+  total_amount     Float?
+
+  hire_profile_id String?
+
   user_id             String
   user                User                 @relation(fields: [user_id], references: [id])
   status              JobStatus            @default(PENDING)
   software_preference SoftwarePreference[]
   attachments         Attachment[]
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  startedAt DateTime?
 
   @@map("hires")
 }

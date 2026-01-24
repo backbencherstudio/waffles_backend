@@ -6,6 +6,7 @@ import {
 import { JobStatus, Prisma } from 'prisma/generated';
 import { SojebStorage } from 'src/common/lib/Disk/SojebStorage';
 import appConfig from 'src/config/app.config';
+import { UpdateHireDto } from 'src/modules/application/client/hire/dto/update-hire.dto';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { CreateHireDto } from './dto/create-hire.dto';
 
@@ -158,7 +159,7 @@ export class HireService {
 
     try {
       const where: Prisma.HireWhereInput = {
-        hire_profile_id: userId, // Editor-er profile ID filter kora hoyeche
+        hire_profile_id: userId,
       };
 
       if (q) {
@@ -184,20 +185,57 @@ export class HireService {
 
       const photoPath = appConfig().storageUrl.jobPhoto;
 
-      return {
-        success: true,
-        message: 'Editor hire records fetched successfully',
-        data: hires.map((hire) => ({
+      const formattedData = hires.map((hire) => {
+        // --- Countdown Logic for List ---
+        let remaining_time_formatted = '0d 0h 0m 0s';
+        let remaining_time_ms = 0;
+
+        const durationInDays = Number(hire.project_duration) || 0;
+        const durationInMs = durationInDays * 24 * 60 * 60 * 1000;
+
+        if (hire.status === 'IN_PROGRESS' && hire.startedAt) {
+          const startedTime = new Date(hire.startedAt).getTime();
+          const deadline = startedTime + durationInMs;
+          const now = Date.now();
+          remaining_time_ms = Math.max(0, deadline - now);
+        } else if (hire.status === 'PENDING') {
+          remaining_time_ms = durationInMs;
+        } else if (hire.status === 'CANCEL' || hire.status === 'LATE') {
+          remaining_time_ms = 0;
+        }
+
+        // Formatting
+        if (remaining_time_ms > 0) {
+          const days = Math.floor(remaining_time_ms / (24 * 60 * 60 * 1000));
+          const hours = Math.floor(
+            (remaining_time_ms % (24 * 60 * 60 * 1000)) / (60 * 60 * 1000),
+          );
+          const minutes = Math.floor(
+            (remaining_time_ms % (60 * 60 * 1000)) / (60 * 1000),
+          );
+          const seconds = Math.floor((remaining_time_ms % (60 * 1000)) / 1000);
+          remaining_time_formatted = `${days}d ${hours}h ${minutes}m ${seconds}s`;
+        }
+
+        return {
           id: hire.id,
           project_title: hire.project_title,
           video_duration: hire.video_duration,
           project_budget: hire.project_budget,
           project_duration: hire.project_duration,
           user_id: hire.user_id,
+          status: hire.status,
+          remaining_time_formatted, // লিস্টে দেখার জন্য ফরম্যাট করা সময়
           project_photo_url: hire.project_photo
-            ? SojebStorage.url(photoPath + hire.project_photo)
+            ? `${photoPath}/${hire.project_photo}`
             : null,
-        })),
+        };
+      });
+
+      return {
+        success: true,
+        message: 'Editor hire records fetched successfully',
+        data: formattedData,
         meta: {
           total,
           page,
@@ -214,18 +252,104 @@ export class HireService {
   async getHireById(id: string) {
     const hire = await this.prisma.hire.findUnique({
       where: { id },
-      include: { attachments: true, user: true },
+      include: {
+        attachments: true,
+      },
     });
+
     if (!hire) throw new NotFoundException('Hire record not found');
+
     const mappedHire = this.mapUrls(
       hire,
       appConfig().storageUrl.jobPhoto,
       appConfig().storageUrl.attachment,
     );
+
+    // --- Countdown Logic ---
+    let deadline = null;
+    let remaining_time_ms = 0;
+    let remaining_time_formatted = '0d 0h 0m 0s';
+
+    const durationInDays = Number(mappedHire.project_duration) || 0;
+    const durationInMs = durationInDays * 24 * 60 * 60 * 1000;
+
+    if (mappedHire.status === 'IN_PROGRESS' && mappedHire.startedAt) {
+      const startedTime = new Date(mappedHire.startedAt).getTime();
+      deadline = new Date(startedTime + durationInMs);
+      const now = Date.now();
+      remaining_time_ms = Math.max(0, deadline.getTime() - now);
+    } else if (mappedHire.status === 'PENDING') {
+      remaining_time_ms = durationInMs;
+    } else if (mappedHire.status === 'CANCEL' || mappedHire.status === 'LATE') {
+      remaining_time_ms = 0;
+    }
+
+    if (remaining_time_ms > 0) {
+      const days = Math.floor(remaining_time_ms / (24 * 60 * 60 * 1000));
+      const hours = Math.floor(
+        (remaining_time_ms % (24 * 60 * 60 * 1000)) / (60 * 60 * 1000),
+      );
+      const minutes = Math.floor(
+        (remaining_time_ms % (60 * 60 * 1000)) / (60 * 1000),
+      );
+      const seconds = Math.floor((remaining_time_ms % (60 * 1000)) / 1000);
+      remaining_time_formatted = `${days}d ${hours}h ${minutes}m ${seconds}s`;
+    }
+
+    const data = {
+      id: mappedHire.id,
+      project_title: mappedHire.project_title,
+      video_category: mappedHire.video_category,
+      project_photo: mappedHire.project_photo,
+      project_photo_url: mappedHire.project_photo
+        ? `${appConfig().storageUrl.jobPhoto}/${mappedHire.project_photo}`
+        : null,
+      video_duration: mappedHire.video_duration,
+      description: mappedHire.description,
+      project_budget: mappedHire.project_budget,
+      project_duration: mappedHire.project_duration,
+      total_amount: mappedHire.total_amount,
+      hire_profile_id: mappedHire.hire_profile_id,
+      user_id: mappedHire.user_id,
+      status: mappedHire.status,
+      started_at: mappedHire.startedAt,
+      deadline: deadline,
+      // remaining_time_ms: remaining_time_ms,
+      remaining_time_formatted: remaining_time_formatted,
+      software_preference: mappedHire.software_preference,
+      createdAt: mappedHire.createdAt,
+      updatedAt: mappedHire.updatedAt,
+
+      attachments: mappedHire.attachments.map((att) => ({
+        id: att.id,
+        file: att.file_url,
+      })),
+
+      user: mappedHire.user,
+    };
+
     return {
       success: true,
       message: 'Hire record fetched successfully',
-      data: mappedHire,
+      data: data,
+    };
+  }
+
+  async updateStatus(id: string, updateHireDto: UpdateHireDto) {
+    const updatedHire = await this.prisma.hire.update({
+      where: { id },
+      data: {
+        ...updateHireDto,
+        status: updateHireDto.status,
+        startedAt: new Date(),
+        updatedAt: new Date(),
+      },
+    });
+
+    return {
+      success: true,
+      message: 'Hire status updated successfully',
+      data: updatedHire,
     };
   }
 

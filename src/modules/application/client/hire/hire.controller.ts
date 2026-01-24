@@ -4,6 +4,7 @@ import {
   Controller,
   Get,
   Param,
+  Patch,
   Post,
   Query,
   Req,
@@ -15,6 +16,7 @@ import { FileFieldsInterceptor } from '@nestjs/platform-express';
 import { JwtAuthGuard } from 'src/modules/auth/guards/jwt-auth.guard';
 import { CreateHireDto } from './dto/create-hire.dto';
 import { HireService } from './hire.service';
+import { UpdateHireDto } from 'src/modules/application/client/hire/dto/update-hire.dto';
 
 @Controller('hires')
 export class HireController {
@@ -99,5 +101,10 @@ export class HireController {
   @Get(':id')
   async findOne(@Param('id') id: string) {
     return this.hireService.getHireById(id);
+  }
+
+  @Patch(':id')
+  async update(@Param('id') id: string, @Body() updateHireDto: UpdateHireDto) {
+    return this.hireService.updateStatus(id, updateHireDto);
   }
 }
