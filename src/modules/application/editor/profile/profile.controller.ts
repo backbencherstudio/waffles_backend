@@ -10,6 +10,7 @@ import {
   Req,
   UseInterceptors,
   UploadedFile,
+  BadRequestException,
 } from '@nestjs/common';
 import { ProfileService } from './profile.service';
 import { CreateProfileDto } from './dto/create-profile.dto';
@@ -29,67 +30,72 @@ import { CreateEducationDto } from './dto/create-education.dto';
 import { UpdateEducationDto } from './dto/update-education.dto';
 import { CreateSkillDto } from './dto/create-skill.dto';
 import { UpdateAboutDto } from './dto/update-about.dto';
+import { use } from 'passport';
 
 @ApiTags('Editor Profile')
 @UseGuards(JwtAuthGuard)
 @ApiBearerAuth()
 @Controller('editor/profile')
 export class ProfileController {
+  
   constructor(private readonly profileService: ProfileService) {}
 
-  // Get full profile
-  @ApiOperation({
-    summary: 'Get full profile with portfolio, education, skills',
-  })
+  // *get full profile
   @Get()
-  async getProfile(@Req() req: any) {
+  async getProfile(
+    @Req() req: any,
+  ) {
     const userId = req.user.userId;
-    return await this.profileService.getProfile(userId);
+    return await this.profileService.getFullProfile(userId);
   }
 
-  // Update profile (name, bio, location, language, avatar)
-  @ApiOperation({ summary: 'Update profile info' })
+  // *profile info update 
+  @Patch('profile-info')
   @UseInterceptors(
     FileInterceptor('avatar', {
       storage: memoryStorage(),
+      limits: { fileSize: 5 * 1024 * 1024 },
     }),
   )
-  @Patch('update')
-  async updateProfile(
+  async updateBasicInfo(
     @Req() req: any,
-    @Body() updateProfileDto: UpdateProfileDto,
-    @UploadedFile() avatar: Express.Multer.File,
+    @Body() createProfileDto: CreateProfileDto,
+    @UploadedFile() avatar?: Express.Multer.File,
   ) {
     const userId = req.user.userId;
-    return await this.profileService.updateProfile(
-      userId,
-      updateProfileDto,
-      avatar,
-    );
+    return await this.profileService.updateBasicProfile(userId, createProfileDto, avatar);
   }
 
-  // Update About Me section
-  @ApiOperation({ summary: 'Update about me section' })
-  @Patch('about')
-  async updateAbout(@Req() req: any, @Body() updateAboutDto: UpdateAboutDto) {
+  //  * update  about me section
+  @Patch('about-me')
+  async updateAboutMe(
+    @Req() req: any,
+    @Body() updateAboutDto: UpdateAboutDto,
+  ) {
     const userId = req.user.userId;
     return await this.profileService.updateAbout(userId, updateAboutDto);
   }
 
-  // ==================== PORTFOLIO ROUTES ====================
+  // topic:protfile 
 
-  @ApiOperation({ summary: 'Create portfolio' })
+  // *create portfolio
+  @Post('portfolio')
   @UseInterceptors(
     FileInterceptor('thumbnail', {
       storage: memoryStorage(),
+      limits: { fileSize: 5 * 1024 * 1024 },
     }),
   )
-  @Post('portfolio')
   async createPortfolio(
     @Req() req: any,
     @Body() createPortfolioDto: CreatePortfolioDto,
     @UploadedFile() thumbnail: Express.Multer.File,
   ) {
+
+    if (!thumbnail) {
+      throw new BadRequestException('Thumbnail file is required');
+    }
+
     const userId = req.user.userId;
     return await this.profileService.createPortfolio(
       userId,
@@ -98,18 +104,19 @@ export class ProfileController {
     );
   }
 
-  @ApiOperation({ summary: 'Update portfolio' })
+  // *update portfolio
+  @Patch('portfolio/:id')
   @UseInterceptors(
     FileInterceptor('thumbnail', {
       storage: memoryStorage(),
+      limits: { fileSize: 5 * 1024 * 1024 },
     }),
   )
-  @Patch('portfolio/:id')
   async updatePortfolio(
     @Req() req: any,
     @Param('id') id: string,
     @Body() updatePortfolioDto: UpdatePortfolioDto,
-    @UploadedFile() thumbnail: Express.Multer.File,
+    @UploadedFile() thumbnail?: Express.Multer.File,
   ) {
     const userId = req.user.userId;
     return await this.profileService.updatePortfolio(
@@ -120,16 +127,19 @@ export class ProfileController {
     );
   }
 
-  @ApiOperation({ summary: 'Delete portfolio' })
+  // *delete portfolio
   @Delete('portfolio/:id')
-  async deletePortfolio(@Req() req: any, @Param('id') id: string) {
+  async deletePortfolio(
+    @Req() req: any,
+    @Param('id') id: string,
+  ) {
     const userId = req.user.userId;
     return await this.profileService.deletePortfolio(userId, id);
   }
 
-  // ==================== EDUCATION ROUTES ====================
+  // topic:education
 
-  @ApiOperation({ summary: 'Add education' })
+  // *create education
   @Post('education')
   async createEducation(
     @Req() req: any,
@@ -137,12 +147,11 @@ export class ProfileController {
   ) {
     const userId = req.user.userId;
     return await this.profileService.createEducation(
-      userId,
-      createEducationDto,
-    );
+      userId, 
+      createEducationDto);
   }
-
-  @ApiOperation({ summary: 'Update education' })
+  
+  // *update education
   @Patch('education/:id')
   async updateEducation(
     @Req() req: any,
@@ -150,6 +159,7 @@ export class ProfileController {
     @Body() updateEducationDto: UpdateEducationDto,
   ) {
     const userId = req.user.userId;
+    // Implement the service method to handle education update
     return await this.profileService.updateEducation(
       userId,
       id,
@@ -157,26 +167,39 @@ export class ProfileController {
     );
   }
 
-  @ApiOperation({ summary: 'Delete education' })
+  //* Delete education
   @Delete('education/:id')
-  async deleteEducation(@Req() req: any, @Param('id') id: string) {
+  async deleteEducation(
+    @Req() req: any,
+    @Param('id') id: string,
+  ) {
     const userId = req.user.userId;
-    return await this.profileService.deleteEducation(userId, id);
+    return { message: 'Delete education endpoint', userId, id };
   }
 
-  // ==================== SKILLS ROUTES ====================
 
-  @ApiOperation({ summary: 'Add skills' })
+  // topic:skills
+  
+  // *add skills
   @Post('skills')
-  async addSkills(@Req() req: any, @Body() createSkillDto: CreateSkillDto) {
+  async addSkills(
+    @Req() req: any,
+    @Body() createSkillDto: CreateSkillDto,
+  ) {
     const userId = req.user.userId;
-    return await this.profileService.addSkills(userId, createSkillDto);
+    return await this.profileService.createSkills(userId, createSkillDto);
   }
 
-  @ApiOperation({ summary: 'Remove a skill' })
-  @Delete('skills/:skillName')
-  async removeSkill(@Req() req: any, @Param('skillName') skillName: string) {
-    const userId = req.user.userId;
-    return await this.profileService.removeSkill(userId, skillName);
-  }
+
+
+
+
+
+
+
+
+
+
+
+
 }

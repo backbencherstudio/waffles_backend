@@ -1,13 +1,15 @@
-import { Controller, Post, Req, Headers } from '@nestjs/common';
+ import { Controller, Post, Req, Headers } from '@nestjs/common';
 import { StripeService } from './stripe.service';
 import { Request } from 'express';
 import { TransactionRepository } from '../../../common/repository/transaction/transaction.repository';
+import { PrismaService } from '../../../prisma/prisma.service';
 
 @Controller('payment/stripe')
 export class StripeController {
   constructor(
     private readonly stripeService: StripeService,
     private transactionRepository: TransactionRepository,
+    private readonly prisma: PrismaService,
   ) {}
 
   @Post('webhook')
@@ -16,6 +18,7 @@ export class StripeController {
     @Req() req: Request,
   ) {
     try {
+
       const payload = req.rawBody.toString();
       const event = await this.stripeService.handleWebhook(payload, signature);
 
@@ -25,21 +28,48 @@ export class StripeController {
           break;
         case 'payment_intent.created':
           break;
-        case 'payment_intent.succeeded':
-          const paymentIntent = event.data.object;
-          // create tax transaction
-          // await StripePayment.createTaxTransaction(
-          //   paymentIntent.metadata['tax_calculation'],
-          // );
-          // Update transaction status in database
-          await this.transactionRepository.updateTransaction({
-            reference_number: paymentIntent.id,
-            status: 'succeeded',
-            paid_amount: paymentIntent.amount / 100, // amount in dollars
-            paid_currency: paymentIntent.currency,
-            raw_status: paymentIntent.status,
+        case 'payment_intent.succeeded': {
+
+          const paymentIntent = event.data.object as any;
+          const reference = paymentIntent.id as string;
+
+          // Find existing transaction
+          const tx = await this.prisma.paymentTransaction.findFirst({
+            where: { reference_number: reference },
           });
+
+          // If we don't find a transaction
+          if (!tx) {
+            await this.transactionRepository.updateTransaction({
+              reference_number: reference,
+              status: 'succeeded',
+              paid_amount: paymentIntent.amount / 100,
+              paid_currency: paymentIntent.currency,
+              raw_status: paymentIntent.status,
+            });
+            break;
+          }
+
+          // Only process credit if transitioning to succeeded
+          if (tx.status !== 'succeeded') {
+            await this.transactionRepository.updateTransaction({
+              reference_number: reference,
+              status: 'succeeded',
+              paid_amount: paymentIntent.amount / 100,
+              paid_currency: paymentIntent.currency,
+              raw_status: paymentIntent.status,
+            });
+
+            // If this is a deposit, credit user's balance
+            if (tx.type === 'deposit' && tx.user_id) {
+              await this.prisma.user.update({
+                where: { id: tx.user_id },
+                data: { balance: { increment: Number(paymentIntent.amount / 100) } },
+              });
+            }
+          }
           break;
+        }
         case 'payment_intent.payment_failed':
           const failedPaymentIntent = event.data.object;
           // Update transaction status in database

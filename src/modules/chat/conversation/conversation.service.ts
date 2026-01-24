@@ -1,308 +1,208 @@
-import { Injectable } from '@nestjs/common';
+import { ConflictException, Injectable } from '@nestjs/common';
 import { CreateConversationDto } from './dto/create-conversation.dto';
 import { UpdateConversationDto } from './dto/update-conversation.dto';
 import { PrismaService } from '../../../prisma/prisma.service';
 import appConfig from '../../../config/app.config';
 import { SojebStorage } from '../../../common/lib/Disk/SojebStorage';
 import { DateHelper } from '../../../common/helper/date.helper';
-import { MessageGateway } from '../message/message.gateway';
 
 @Injectable()
 export class ConversationService {
-  constructor(
-    private prisma: PrismaService,
-    private readonly messageGateway: MessageGateway,
-  ) {}
+  constructor(private prisma: PrismaService) {}
 
-  async create(createConversationDto: CreateConversationDto) {
-    try {
-      const data: any = {};
+  // *create conversation
+  async create(createConversationDto: CreateConversationDto, sender: string) {
+    const { participant_id } = createConversationDto;
 
-      if (createConversationDto.creator_id) {
-        data.creator_id = createConversationDto.creator_id;
-      }
-      if (createConversationDto.participant_id) {
-        data.participant_id = createConversationDto.participant_id;
-      }
+    if (participant_id === sender) {
+      throw new ConflictException('Cannot create conversation with yourself');
+    }
 
-      // check if conversation exists
-      let conversation = await this.prisma.conversation.findFirst({
-        select: {
-          id: true,
-          creator_id: true,
-          participant_id: true,
-          created_at: true,
-          updated_at: true,
-          creator: {
-            select: {
-              id: true,
-              name: true,
-              avatar: true,
-            },
-          },
-          participant: {
-            select: {
-              id: true,
-              name: true,
-              avatar: true,
-            },
-          },
-          messages: {
-            orderBy: {
-              created_at: 'desc',
-            },
-            take: 1,
-            select: {
-              id: true,
-              message: true,
-              created_at: true,
+    // check if conversation already exists between the two users
+    const existingConversation = await this.prisma.conversation.findFirst({
+      where: {
+        AND: [
+          { participant: { some: { user_id: sender } } },
+          { participant: { some: { user_id: participant_id } } },
+        ],
+      },
+      include: {
+        participant: {
+          include: {
+            user: {
+              select: {
+                id: true,
+                name: true,
+                avatar: true,
+              },
             },
           },
         },
-        where: {
-          creator_id: data.creator_id,
-          participant_id: data.participant_id,
-        },
-      });
+      },
+    });
 
-      if (conversation) {
-        return {
-          success: false,
-          message: 'Conversation already exists',
-          data: conversation,
-        };
-      }
-
-      conversation = await this.prisma.conversation.create({
-        select: {
-          id: true,
-          creator_id: true,
-          participant_id: true,
-          created_at: true,
-          updated_at: true,
-          creator: {
-            select: {
-              id: true,
-              name: true,
-              avatar: true,
-            },
-          },
-          participant: {
-            select: {
-              id: true,
-              name: true,
-              avatar: true,
-            },
-          },
-          messages: {
-            orderBy: {
-              created_at: 'desc',
-            },
-            take: 1,
-            select: {
-              id: true,
-              message: true,
-              created_at: true,
-            },
-          },
-        },
-        data: {
-          ...data,
-        },
-      });
-
-      // add image url
-      if (conversation.creator.avatar) {
-        conversation.creator['avatar_url'] = SojebStorage.url(
-          appConfig().storageUrl.avatar + conversation.creator.avatar,
-        );
-      }
-      if (conversation.participant.avatar) {
-        conversation.participant['avatar_url'] = SojebStorage.url(
-          appConfig().storageUrl.avatar + conversation.participant.avatar,
-        );
-      }
-
-      // trigger socket event
-      this.messageGateway.server.to(data.creator_id).emit('conversation', {
-        from: data.creator_id,
-        data: conversation,
-      });
-      this.messageGateway.server.to(data.participant_id).emit('conversation', {
-        from: data.participant_id,
-        data: conversation,
-      });
-
+    if (existingConversation) {
       return {
+        message: 'Conversation already exists',
         success: true,
-        message: 'Conversation created successfully',
-        data: conversation,
-      };
-    } catch (error) {
-      return {
-        success: false,
-        message: error.message,
+        conversation: {
+          id: existingConversation.id,
+          participants: existingConversation.participant.map((p) => ({
+            userId: p.user.id,
+            name: p.user.name,
+            avatar: p.user.avatar,
+            avatar_url: p.user.avatar
+              ? SojebStorage.url(
+                  `${appConfig().storageUrl.avatar}/${p.user.avatar}`,
+                )
+              : null,
+          })),
+        },
       };
     }
-  }
 
-  async findAll() {
-    try {
-      const conversations = await this.prisma.conversation.findMany({
-        orderBy: {
-          updated_at: 'desc',
+    // create new conversation
+    const newConversation = await this.prisma.conversation.create({
+      data: {
+        participant: {
+          create: [{ user_id: sender }, { user_id: participant_id }],
         },
-        select: {
-          id: true,
-          creator_id: true,
-          participant_id: true,
-          created_at: true,
-          updated_at: true,
-          creator: {
-            select: {
-              id: true,
-              name: true,
-              avatar: true,
-            },
-          },
-          participant: {
-            select: {
-              id: true,
-              name: true,
-              avatar: true,
-            },
-          },
-          messages: {
-            orderBy: {
-              created_at: 'desc',
-            },
-            take: 1,
-            select: {
-              id: true,
-              message: true,
-              created_at: true,
+      },
+      include: {
+        participant: {
+          include: {
+            user: {
+              select: {
+                id: true,
+                name: true,
+                avatar: true,
+              },
             },
           },
         },
-      });
+      },
+    });
 
-      // add image url
-      for (const conversation of conversations) {
-        if (conversation.creator.avatar) {
-          conversation.creator['avatar_url'] = SojebStorage.url(
-            appConfig().storageUrl.avatar + conversation.creator.avatar,
-          );
-        }
-        if (conversation.participant.avatar) {
-          conversation.participant['avatar_url'] = SojebStorage.url(
-            appConfig().storageUrl.avatar + conversation.participant.avatar,
-          );
-        }
-      }
-
-      return {
-        success: true,
-        data: conversations,
-      };
-    } catch (error) {
-      return {
-        success: false,
-        message: error.message,
-      };
-    }
+    const formattedParticipants = {
+      id: newConversation.id,
+      participants: newConversation.participant.map((p) => ({
+        userId: p.user.id,
+        name: p.user.name,
+        avatar: p.user.avatar,
+        avatar_url: p.user.avatar
+          ? SojebStorage.url(
+              `${appConfig().storageUrl.avatar}/${p.user.avatar}`,
+            )
+          : null,
+      })),
+    };
+    return {
+      message: 'Conversation created successfully',
+      success: true,
+      conversation: formattedParticipants,
+    };
   }
 
+  //  *conversation list of user
+  async findAll(userId: string) {
+    const conversations = await this.prisma.conversation.findMany({
+      where: {
+        participant: { some: { user_id: userId } },
+      },
+      include: {
+        participant: {
+          include: {
+            user: {
+              select: {
+                id: true,
+                name: true,
+                avatar: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    const formattedConversations = conversations.map((conversation) => ({
+      id: conversation.id,
+      participants: conversation.participant.map((p) => ({
+        userId: p.user.id,
+        name: p.user.name,
+        avatar: p.user.avatar,
+        avatar_url: p.user.avatar
+          ? SojebStorage.url(
+              `${appConfig().storageUrl.avatar}/${p.user.avatar}`,
+            )
+          : null,
+      })),
+    }));
+    return {
+      message: 'Conversations retrieved successfully',
+      success: true,
+      conversations: formattedConversations,
+    };
+  }
+
+  // get conversation by id
   async findOne(id: string) {
-    try {
-      const conversation = await this.prisma.conversation.findUnique({
-        where: { id },
-        select: {
-          id: true,
-          creator_id: true,
-          participant_id: true,
-          created_at: true,
-          updated_at: true,
-          creator: {
-            select: {
-              id: true,
-              name: true,
-              avatar: true,
-            },
-          },
-          participant: {
-            select: {
-              id: true,
-              name: true,
-              avatar: true,
+    const conversation = await this.prisma.conversation.findUnique({
+      where: { id },
+      include: {
+        participant: {
+          include: {
+            user: {
+              select: {
+                id: true,
+                name: true,
+                avatar: true,
+              },
             },
           },
         },
-      });
+      },
+    });
 
-      // add image url
-      if (conversation.creator.avatar) {
-        conversation.creator['avatar_url'] = SojebStorage.url(
-          appConfig().storageUrl.avatar + conversation.creator.avatar,
-        );
-      }
+    if (!conversation) throw new ConflictException('Conversation not found');
 
-      return {
-        success: true,
-        data: conversation,
-      };
-    } catch (error) {
-      return {
-        success: false,
-        message: error.message,
-      };
-    }
+    const formattedConversation = {
+      id: conversation.id,
+      participants: conversation.participant.map((p) => ({
+        userId: p.user.id,
+        name: p.user.name,
+        avatar: p.user.avatar,
+        avatar_url: p.user.avatar
+          ? SojebStorage.url(
+              `${appConfig().storageUrl.avatar}/${p.user.avatar}`,
+            )
+          : null,
+      })),
+    };
+
+    return {
+      success: true,
+      message: 'Conversation retrieved successfully',
+      conversation: formattedConversation,
+    };
   }
-
-  async update(id: string, updateConversationDto: UpdateConversationDto) {
-    try {
-      const data = {};
-      if (updateConversationDto.creator_id) {
-        data['creator_id'] = updateConversationDto.creator_id;
-      }
-      if (updateConversationDto.participant_id) {
-        data['participant_id'] = updateConversationDto.participant_id;
-      }
-
-      await this.prisma.conversation.update({
-        where: { id },
-        data: {
-          ...data,
-          updated_at: DateHelper.now(),
-        },
-      });
-
-      return {
-        success: true,
-        message: 'Conversation updated successfully',
-      };
-    } catch (error) {
-      return {
-        success: false,
-        message: error.message,
-      };
-    }
-  }
-
+ 
+  // *delete conversation
   async remove(id: string) {
-    try {
-      await this.prisma.conversation.delete({
-        where: { id },
-      });
+    const conversation = await this.prisma.conversation.findUnique({
+      where: { id },
+    });
+    if (!conversation) throw new ConflictException('Conversation not found');
 
-      return {
-        success: true,
-        message: 'Conversation deleted successfully',
-      };
-    } catch (error) {
-      return {
-        success: false,
-        message: error.message,
-      };
-    }
+    await this.prisma.conversation.delete({
+      where: { id },
+    });
+    return {
+      success: true,
+      message: 'Conversation deleted successfully',
+    };
   }
+
+
+
+
 }
