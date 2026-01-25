@@ -1,10 +1,18 @@
-import { IsNotEmpty, IsOptional, IsNumber, IsString, IsDateString } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { Type } from 'class-transformer';
+import {
+  IsArray,
+  IsDateString,
+  IsNotEmpty,
+  IsNumber,
+  IsOptional,
+  IsString,
+} from 'class-validator';
 
 export class CreateBidDto {
-  @ApiProperty({ description: 'The bid amount', example: 500.00 })
   @IsNotEmpty()
   @IsNumber()
+  @Type(() => Number)
   amount: number;
 
   @ApiPropertyOptional({ description: 'Requested delivery or completion date' })
@@ -16,4 +24,9 @@ export class CreateBidDto {
   @IsOptional()
   @IsString()
   message?: string;
+
+  @ApiPropertyOptional({ description: 'Proposal attachments' })
+  @IsOptional()
+  @IsArray()
+  attachments?: string[];
 }

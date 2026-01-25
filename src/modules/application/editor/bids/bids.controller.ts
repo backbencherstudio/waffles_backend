@@ -8,7 +8,6 @@ import {
   Patch,
   Post,
   Req,
-  UploadedFiles,
   UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
@@ -19,11 +18,11 @@ import { CreateBidDto } from './dto/create-bid.dto';
 import { UpdateBidDto } from './dto/update-bid.dto';
 
 @Controller('bids')
+@UseGuards(JwtAuthGuard)
 export class BidsController {
   constructor(private readonly bidsService: BidsService) {}
 
   @Post(':jobId')
-  @UseGuards(JwtAuthGuard)
   @UseInterceptors(
     FileFieldsInterceptor([{ name: 'attachments', maxCount: 10 }]),
   )
@@ -31,31 +30,34 @@ export class BidsController {
     @Req() req: any,
     @Param('jobId') jobId: string,
     @Body() dto: CreateBidDto,
-    @UploadedFiles()
-    files: {
-      attachments?: Express.Multer.File[];
-    },
   ) {
     const userId = req.user?.userId;
-    if (!userId) throw new BadRequestException('User id not found in request');
-    const attachments = files?.attachments ?? [];
+    if (!userId) throw new BadRequestException('User ID not found in request');
 
-    return this.bidsService.createBid(userId, dto, attachments, jobId);
+    const result = await this.bidsService.createBid(userId, dto, jobId);
+
+    return {
+      success: true,
+      message: 'Bid created successfully',
+      data: result,
+    };
   }
 
-  @Get()
-  findAll() {
-    return this.bidsService.findAll();
+  @Get('allJobs')
+  findAll(@Req() req: any) {
+    const userId = req.user?.userId;
+    if (!userId) throw new BadRequestException('User ID not found in request');
+    return this.bidsService.findAll(userId);
   }
 
   @Get(':id')
   findOne(@Param('id') id: string) {
-    return this.bidsService.findOne(+id);
+    return this.bidsService.findOne(id);
   }
 
   @Patch(':id')
   update(@Param('id') id: string, @Body() updateBidDto: UpdateBidDto) {
-    return this.bidsService.update(+id, updateBidDto);
+    return this.bidsService.updateBid(id, updateBidDto);
   }
 
   @Delete(':id')
