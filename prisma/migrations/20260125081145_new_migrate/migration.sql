@@ -11,19 +11,16 @@ CREATE TYPE "JobCategory" AS ENUM ('LONG_FORM_VIDEO', 'SHORTS_REELS_TIKTOKS', 'T
 CREATE TYPE "Platform" AS ENUM ('YOUTUBE', 'FACEBOOK', 'X', 'INSTAGRAM', 'TIKTOK', 'LINKEDIN', 'SNAPCHATS', 'PINTEREST', 'VIMEO', 'TWITCH', 'THREADS', 'OTHER');
 
 -- CreateEnum
-CREATE TYPE "JobStatus" AS ENUM ('PENDING', 'IN_PROGRESS', 'COMPLETED', 'CANCEL');
+CREATE TYPE "JobStatus" AS ENUM ('PENDING', 'IN_PROGRESS', 'COMPLETED', 'CANCEL', 'LATE');
 
 -- CreateEnum
-<<<<<<<< HEAD:prisma/migrations/20260119052059_hire_model_create/migration.sql
 CREATE TYPE "VideoCategory" AS ENUM ('LONG_FORM', 'SHORT_FORM', 'THUMBNAIL', 'ADS_UGC', 'PODCAST', 'WEDDING_EVENT', 'COLOR_AUDIO', 'CAPTION_SUBTITLE');
 
 -- CreateEnum
 CREATE TYPE "SoftwarePreference" AS ENUM ('FINAL_CUT_PRO', 'DAVINCI_RESOLVE', 'SONY_VEGAS', 'ADOBE_PREMIERE_PRO', 'FILMORA', 'AFTER_EFFECTS', 'CAPCUT', 'ANY');
 
 -- CreateEnum
-========
->>>>>>>> 7e23cc28a170bdcf828ac33fcc8a02abde0567ce:prisma/migrations/20260119095633_new/migration.sql
-CREATE TYPE "MessageStatus" AS ENUM ('PENDING', 'SENT', 'DELIVERED', 'READ');
+CREATE TYPE "MessageStatus" AS ENUM ('SENT', 'DELIVERED', 'READ');
 
 -- CreateTable
 CREATE TABLE "accounts" (
@@ -58,13 +55,11 @@ CREATE TABLE "users" (
     "avatar" TEXT,
     "bio" TEXT,
     "location" VARCHAR(255),
-<<<<<<<< HEAD:prisma/migrations/20260119052059_hire_model_create/migration.sql
-    "language" TEXT[] DEFAULT ARRAY[]::TEXT[],
-========
     "language" VARCHAR(100),
->>>>>>>> 7e23cc28a170bdcf828ac33fcc8a02abde0567ce:prisma/migrations/20260119095633_new/migration.sql
     "about_me" TEXT,
     "billing_id" TEXT,
+    "stripe_connect_id" TEXT,
+    "balance" DECIMAL(10,2) DEFAULT 0.0,
     "type" "UserType" DEFAULT 'CLIENT',
     "email_verified_at" TIMESTAMP(3),
     "first_name" VARCHAR(255),
@@ -110,11 +105,7 @@ CREATE TABLE "portfolios" (
     "deleted_at" TIMESTAMP(3),
     "status" SMALLINT DEFAULT 1,
     "title" TEXT,
-<<<<<<<< HEAD:prisma/migrations/20260119052059_hire_model_create/migration.sql
-    "project_type" TEXT[],
-========
     "project_type" TEXT,
->>>>>>>> 7e23cc28a170bdcf828ac33fcc8a02abde0567ce:prisma/migrations/20260119095633_new/migration.sql
     "description" TEXT,
     "thumbnail" TEXT,
     "user_id" TEXT NOT NULL,
@@ -176,11 +167,11 @@ CREATE TABLE "JOB" (
 -- CreateTable
 CREATE TABLE "Bid" (
     "id" TEXT NOT NULL,
-    "jobId" TEXT,
-    "bidder" TEXT,
     "amount" DOUBLE PRECISION,
+    "req_date" TIMESTAMP(3),
     "message" TEXT,
-    "status" TEXT NOT NULL DEFAULT 'pending',
+    "jobId" TEXT,
+    "status" TEXT NOT NULL DEFAULT 'PENDING',
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updated_at" TIMESTAMP(3) NOT NULL,
     "deleted_at" TIMESTAMP(3),
@@ -190,29 +181,28 @@ CREATE TABLE "Bid" (
 );
 
 -- CreateTable
-<<<<<<<< HEAD:prisma/migrations/20260119052059_hire_model_create/migration.sql
-CREATE TABLE "Hire" (
+CREATE TABLE "hires" (
     "id" TEXT NOT NULL,
-    "projectTitle" TEXT NOT NULL,
-    "videoCategory" "VideoCategory" NOT NULL,
-    "projectPhoto" TEXT,
-    "videoDuration" "ContentLength" NOT NULL,
+    "project_title" TEXT NOT NULL,
+    "video_category" "VideoCategory" NOT NULL,
+    "project_photo" TEXT,
+    "video_duration" "ContentLength" NOT NULL,
     "description" TEXT NOT NULL,
-    "projectBudget" DOUBLE PRECISION NOT NULL,
-    "projectDuration" TEXT NOT NULL,
-    "totalAmount" DOUBLE PRECISION NOT NULL,
+    "project_budget" DOUBLE PRECISION,
+    "project_duration" DOUBLE PRECISION,
+    "total_amount" DOUBLE PRECISION,
+    "hire_profile_id" TEXT,
     "user_id" TEXT NOT NULL,
     "status" "JobStatus" NOT NULL DEFAULT 'PENDING',
-    "softwarePreference" "SoftwarePreference"[],
+    "software_preference" "SoftwarePreference"[],
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
+    "startedAt" TIMESTAMP(3),
 
-    CONSTRAINT "Hire_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "hires_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
-========
->>>>>>>> 7e23cc28a170bdcf828ac33fcc8a02abde0567ce:prisma/migrations/20260119095633_new/migration.sql
 CREATE TABLE "roles" (
     "id" TEXT NOT NULL,
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -328,19 +318,13 @@ CREATE TABLE "payment_transactions" (
 );
 
 -- CreateTable
-CREATE TABLE "messages" (
+CREATE TABLE "conversations" (
     "id" TEXT NOT NULL,
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updated_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "deleted_at" TIMESTAMP(3),
-    "status" "MessageStatus" DEFAULT 'PENDING',
-    "sender_id" TEXT,
-    "receiver_id" TEXT,
-    "conversation_id" TEXT,
-    "attachment_id" TEXT,
-    "message" TEXT,
 
-    CONSTRAINT "messages_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "conversations_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
@@ -360,15 +344,34 @@ CREATE TABLE "attachments" (
 );
 
 -- CreateTable
-CREATE TABLE "conversations" (
+CREATE TABLE "participants" (
     "id" TEXT NOT NULL,
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updated_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "deleted_at" TIMESTAMP(3),
-    "creator_id" TEXT,
-    "participant_id" TEXT,
+    "conversation_id" TEXT,
+    "user_id" TEXT,
+    "role" TEXT DEFAULT 'participant',
+    "joined_at" TIMESTAMP(3) DEFAULT CURRENT_TIMESTAMP,
 
-    CONSTRAINT "conversations_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "participants_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "messages" (
+    "id" TEXT NOT NULL,
+    "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updated_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "deleted_at" TIMESTAMP(3),
+    "conversation_id" TEXT,
+    "sender_id" TEXT,
+    "receiver_id" TEXT,
+    "message" TEXT,
+    "status" "MessageStatus" DEFAULT 'SENT',
+    "read_at" TIMESTAMP(3),
+    "attachmentId" TEXT,
+
+    CONSTRAINT "messages_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
@@ -485,18 +488,15 @@ CREATE UNIQUE INDEX "users_email_key" ON "users"("email");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "users_domain_key" ON "users"("domain");
-<<<<<<<< HEAD:prisma/migrations/20260119052059_hire_model_create/migration.sql
-
--- CreateIndex
-CREATE UNIQUE INDEX "users_username_key" ON "users"("username");
-========
 
 -- CreateIndex
 CREATE UNIQUE INDEX "users_username_key" ON "users"("username");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "skills_user_id_key" ON "skills"("user_id");
->>>>>>>> 7e23cc28a170bdcf828ac33fcc8a02abde0567ce:prisma/migrations/20260119095633_new/migration.sql
+
+-- CreateIndex
+CREATE UNIQUE INDEX "participants_conversation_id_user_id_key" ON "participants"("conversation_id", "user_id");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "settings_key_key" ON "settings"("key");
@@ -532,12 +532,9 @@ ALTER TABLE "Bid" ADD CONSTRAINT "Bid_jobId_fkey" FOREIGN KEY ("jobId") REFERENC
 ALTER TABLE "Bid" ADD CONSTRAINT "Bid_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
-<<<<<<<< HEAD:prisma/migrations/20260119052059_hire_model_create/migration.sql
-ALTER TABLE "Hire" ADD CONSTRAINT "Hire_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "hires" ADD CONSTRAINT "hires_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-========
->>>>>>>> 7e23cc28a170bdcf828ac33fcc8a02abde0567ce:prisma/migrations/20260119095633_new/migration.sql
 ALTER TABLE "roles" ADD CONSTRAINT "roles_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
@@ -568,25 +565,19 @@ ALTER TABLE "user_payment_methods" ADD CONSTRAINT "user_payment_methods_user_id_
 ALTER TABLE "payment_transactions" ADD CONSTRAINT "payment_transactions_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "messages" ADD CONSTRAINT "messages_sender_id_fkey" FOREIGN KEY ("sender_id") REFERENCES "users"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+ALTER TABLE "attachments" ADD CONSTRAINT "attachments_hire_id_fkey" FOREIGN KEY ("hire_id") REFERENCES "hires"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "messages" ADD CONSTRAINT "messages_receiver_id_fkey" FOREIGN KEY ("receiver_id") REFERENCES "users"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+ALTER TABLE "participants" ADD CONSTRAINT "participants_conversation_id_fkey" FOREIGN KEY ("conversation_id") REFERENCES "conversations"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "participants" ADD CONSTRAINT "participants_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "messages" ADD CONSTRAINT "messages_conversation_id_fkey" FOREIGN KEY ("conversation_id") REFERENCES "conversations"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "messages" ADD CONSTRAINT "messages_attachment_id_fkey" FOREIGN KEY ("attachment_id") REFERENCES "attachments"("id") ON DELETE SET NULL ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "attachments" ADD CONSTRAINT "attachments_hire_id_fkey" FOREIGN KEY ("hire_id") REFERENCES "Hire"("id") ON DELETE SET NULL ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "conversations" ADD CONSTRAINT "conversations_creator_id_fkey" FOREIGN KEY ("creator_id") REFERENCES "users"("id") ON DELETE SET NULL ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "conversations" ADD CONSTRAINT "conversations_participant_id_fkey" FOREIGN KEY ("participant_id") REFERENCES "users"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+ALTER TABLE "messages" ADD CONSTRAINT "messages_attachmentId_fkey" FOREIGN KEY ("attachmentId") REFERENCES "attachments"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "user_settings" ADD CONSTRAINT "user_settings_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE SET NULL ON UPDATE CASCADE;
