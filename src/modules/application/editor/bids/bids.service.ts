@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   Injectable,
+  InternalServerErrorException,
   NotFoundException,
 } from '@nestjs/common';
 import { SojebStorage } from 'src/common/lib/Disk/SojebStorage';
@@ -113,9 +114,7 @@ export class BidsService {
     };
   }
 
-  // একটি নির্দিষ্ট Bid fetch করার জন্য
   async findOne(id: string) {
-    // আপনার মডেলে ID হলো String (cuid)
     const bid = await this.prisma.bid.findUnique({
       where: { id },
       include: {
@@ -135,44 +134,61 @@ export class BidsService {
     };
   }
 
-  async updateBid(id: string, dto: UpdateBidDto) {
+async updateBidStatus(bidId: string, updateDto: UpdateBidDto) {
+    const { status } = updateDto;
+
     try {
-      // প্রথমে চেক করুন Bid টি আছে কিনা
-      const existingBid = await this.prisma.bid.findUnique({
-        where: { id },
+      // 1. Transaction start korchi jate data consistency thake
+      return await this.prisma.$transaction(async (tx) => {
+        
+        // Check korchi bid-ta database-e ache kina
+        const bidExists = await tx.bid.findUnique({
+          where: { id: bidId },
+        });
+
+        if (!bidExists) {
+          throw new NotFoundException(`Bid with ID ${bidId} not found`);
+        }
+
+        // 2. Bid-er status update (eta shob khetrei hobe, CANCEL ba IN_PROGRESS)
+        const updatedBid = await tx.bid.update({
+          where: { id: bidId },
+          data: {
+            status: status,
+            updated_at: new Date(),
+          },
+        });
+
+        // 3. Conditional Logic: Sudhu IN_PROGRESS hole JOB update hobe
+        if (status === 'IN_PROGRESS') {
+          if (updatedBid.jobId) {
+            await tx.jOB.update({
+              where: { id: updatedBid.jobId },
+              data: { 
+                status: 'IN_PROGRESS' 
+              },
+            });
+          }
+        }
+
+        // Note: Jodi status 'CANCEL' hoy, uporer 'if' block execute hobe na, 
+        // tai sudhu Bid update hoye transaction shesh hobe.
+
+        return {
+          success: true,
+          message: status === 'IN_PROGRESS' 
+            ? 'Bid and Job both updated to IN_PROGRESS' 
+            : `Bid status updated to ${status} successfully`,
+          data: updatedBid,
+        };
       });
-
-      if (!existingBid) {
-        throw new NotFoundException(`Bid with ID ${id} not found`);
-      }
-
-      // Bid Update করা
-      const updatedBid = await this.prisma.bid.update({
-        where: { id },
-        data: {
-          amount: dto.amount,
-          message: dto.message,
-          req_date: dto.req_date ? new Date(dto.req_date) : undefined,
-        },
-        include: {
-          job: true,
-          user: true,
-        },
-      });
-
-      return {
-        success: true,
-        message: 'Bid updated successfully',
-        data: updatedBid,
-      };
     } catch (error) {
-      if (error instanceof NotFoundException) throw error;
-
-      console.error('Prisma Error:', error);
-      throw new BadRequestException('Failed to update bid');
+      if (error instanceof NotFoundException) {
+        throw error;
+      }
+      throw new InternalServerErrorException('Failed to update status');
     }
   }
-
   remove(id: number) {
     return `This action removes a #${id} bid`;
   }

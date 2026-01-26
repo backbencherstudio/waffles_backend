@@ -55,9 +55,9 @@ export class BidsController {
     return this.bidsService.findOne(id);
   }
 
-  @Patch(':id')
-  update(@Param('id') id: string, @Body() updateBidDto: UpdateBidDto) {
-    return this.bidsService.updateBid(id, updateBidDto);
+  @Patch('accept/:bidId')
+  accept(@Param('bidId') bidId: string, @Body() dto: UpdateBidDto) {
+    return this.bidsService.updateBidStatus(bidId, dto);
   }
 
   @Delete(':id')

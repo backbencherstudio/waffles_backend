@@ -1,19 +1,17 @@
 // external imports
-import { ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
+import { ValidationPipe } from '@nestjs/common';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
-import * as express from 'express';
 import helmet from 'helmet';
 import { join, resolve } from 'path';
+import * as express from 'express';
 // internal imports
-import { IoAdapter } from '@nestjs/platform-socket.io';
 import { AppModule } from './app.module';
+import appConfig from './config/app.config';
 import { CustomExceptionFilter } from './common/exception/custom-exception.filter';
 import { SojebStorage } from './common/lib/Disk/SojebStorage';
-import { Prisma } from 'prisma/generated';
-import { PrismaExceptionFilter } from './common/exception/prisma-exception.filter';
-import appConfig from './config/app.config';
+import { IoAdapter } from '@nestjs/platform-socket.io';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule, {
@@ -22,10 +20,25 @@ async function bootstrap() {
 
   // Handle raw body for webhooks
   // app.use('/payment/stripe/webhook', express.raw({ type: 'application/json' }));
-
+  app.useWebSocketAdapter(new IoAdapter(app));
   app.setGlobalPrefix('api');
-  app.enableCors();
-  app.use(helmet());
+  //app.enableCors();
+  app.enableCors({
+    origin: true, // Add your frontend URL
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+    credentials: true,
+    allowedHeaders: [
+      'Content-Type',
+      'Authorization',
+      'X-Requested-With',
+      'Accept',
+    ],
+  });
+  app.use(
+    helmet({
+      crossOriginResourcePolicy: false,
+    }),
+  );
   // Enable it, if special charactrers not encoding perfectly
   // app.use((req, res, next) => {
   //   // Only force content-type for specific API routes, not Swagger or assets
@@ -34,23 +47,30 @@ async function bootstrap() {
   //   }
   //   next();
   // });
-  app.useStaticAssets(join(__dirname, '..', 'public'), {
-    index: false,
-    prefix: '/public',
-  });
-  app.useStaticAssets(join(__dirname, '..', 'public/storage'), {
-    index: false,
-    prefix: '/storage',
-  });
+
+  app.use('/public', express.static(resolve('./public')));
+  console.log('Serving static from:', join(__dirname, '..', 'public'));
+
+  app
+    .getHttpAdapter()
+    .getInstance()
+    .get('/test-image', (req, res) => {
+      res.sendFile(
+        join(
+          __dirname,
+          '..',
+          'public/storage/avatar/md43o90g_top-view-casual-clothes_158398-305.avif',
+        ),
+      );
+      
+    });
+
   app.useGlobalPipes(
     new ValidationPipe({
       transform: true,
     }),
   );
-  app.useGlobalFilters(
-    new PrismaExceptionFilter(),
-    new CustomExceptionFilter()
-  );
+  app.useGlobalFilters(new CustomExceptionFilter());
 
   // storage setup
   SojebStorage.config({

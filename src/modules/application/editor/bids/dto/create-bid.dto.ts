@@ -29,4 +29,9 @@ export class CreateBidDto {
   @IsOptional()
   @IsArray()
   attachments?: string[];
+
+  @ApiProperty({ description: 'Bid status' })
+  @IsNotEmpty()
+  @IsString()
+  status: string;
 }

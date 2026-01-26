@@ -194,9 +194,6 @@ export class JobsService {
       const job = (await this.prisma.jOB.findFirst({
         where: { id, deleted_at: null },
         include: {
-          // user: {
-          //   select: { id: true, name: true, email: true, avatar: true },
-          // },
           bids: {
             where: { deleted_at: null },
             include: {
