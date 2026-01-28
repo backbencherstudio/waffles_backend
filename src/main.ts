@@ -1,17 +1,17 @@
 // external imports
-import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
+import { NestFactory } from '@nestjs/core';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import * as express from 'express';
 import helmet from 'helmet';
 import { join, resolve } from 'path';
-import * as express from 'express';
 // internal imports
+import { IoAdapter } from '@nestjs/platform-socket.io';
 import { AppModule } from './app.module';
-import appConfig from './config/app.config';
 import { CustomExceptionFilter } from './common/exception/custom-exception.filter';
 import { SojebStorage } from './common/lib/Disk/SojebStorage';
-import { IoAdapter } from '@nestjs/platform-socket.io';
+import appConfig from './config/app.config';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule, {
@@ -62,12 +62,16 @@ async function bootstrap() {
           'public/storage/avatar/md43o90g_top-view-casual-clothes_158398-305.avif',
         ),
       );
-      
     });
 
   app.useGlobalPipes(
     new ValidationPipe({
       transform: true,
+      whitelist: true,
+      forbidNonWhitelisted: false,
+      transformOptions: {
+        enableImplicitConversion: true,
+      },
     }),
   );
   app.useGlobalFilters(new CustomExceptionFilter());

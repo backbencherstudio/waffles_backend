@@ -1,37 +1,24 @@
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
-import {
-  IsArray,
-  IsDateString,
-  IsNotEmpty,
-  IsNumber,
-  IsOptional,
-  IsString,
-} from 'class-validator';
+import { IsNumber, IsOptional, IsString, Min } from 'class-validator';
 
 export class CreateBidDto {
-  @IsNotEmpty()
   @IsNumber()
+  @IsOptional()
   @Type(() => Number)
-  amount: number;
+  @Min(1)
+  amount?: number;
 
-  @ApiPropertyOptional({ description: 'Requested delivery or completion date' })
+  @IsNumber()
   @IsOptional()
-  @IsDateString()
-  req_date?: string;
+  @Type(() => Number)
+  @Min(1)
+  req_date?: number; // এটি এখন Float হিসেবে ডাটাবেসে যাবে (যেমন: ৩ দিন)
 
-  @ApiPropertyOptional({ description: 'Proposal message for the job' })
-  @IsOptional()
   @IsString()
+  @IsOptional()
   message?: string;
 
-  @ApiPropertyOptional({ description: 'Proposal attachments' })
-  @IsOptional()
-  @IsArray()
-  attachments?: string[];
-
-  @ApiProperty({ description: 'Bid status' })
-  @IsNotEmpty()
   @IsString()
-  status: string;
+  @IsOptional()
+  status?: string;
 }
