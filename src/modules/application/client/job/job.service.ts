@@ -13,20 +13,98 @@ import { UpdateJobDto } from './dto/update-job.dto';
 export class JobsService {
   constructor(private readonly prisma: PrismaService) {}
 
-  // countdown logic
-  private formatCountdown(durationInDays: string | number): string {
-    const daysNum = Number(durationInDays) || 0;
-    const ms = daysNum * 24 * 60 * 60 * 1000;
+  // async createJob(
+  //   userId: string,
+  //   dto: CreateJobDto,
+  //   files: Express.Multer.File[],
+  //   jobPhoto?: Express.Multer.File,
+  // ) {
+  //   // 1. Initial Validation
+  //   if (!files?.length) {
+  //     throw new BadRequestException('At least one attachment file is required');
+  //   }
 
-    if (ms <= 0) return '0d 0h 0m 0s';
+  //   return this.prisma.$transaction(async (tx) => {
+  //     // ⬇️ NEW: User type check logic
+  //     const user = await tx.user.findUnique({
+  //       where: { id: userId },
+  //       select: { type: true },
+  //     });
 
-    const days = Math.floor(ms / (24 * 60 * 60 * 1000));
-    const hours = Math.floor((ms % (24 * 60 * 60 * 1000)) / (60 * 60 * 1000));
-    const minutes = Math.floor((ms % (60 * 60 * 1000)) / (60 * 1000));
-    const seconds = Math.floor((ms % (60 * 1000)) / 1000);
+  //     if (!user || user.type !== 'CLIENT') {
+  //       throw new ForbiddenException('Only clients are allowed to create jobs');
+  //     }
+  //     // ⬆️ End of check
 
-    return `${days}d ${hours}h ${minutes}m ${seconds}s`;
-  }
+  //     const attachmentPath = appConfig().storageUrl.attachment.endsWith('/')
+  //       ? appConfig().storageUrl.attachment
+  //       : `${appConfig().storageUrl.attachment}/`;
+
+  //     const jobPhotoPath = appConfig().storageUrl.jobPhoto.endsWith('/')
+  //       ? appConfig().storageUrl.jobPhoto
+  //       : `${appConfig().storageUrl.jobPhoto}/`;
+
+  //     // Job photo filename logic
+  //     let jobPhotoName: string | null = null;
+  //     if (jobPhoto) {
+  //       const photoExt = jobPhoto.originalname.split('.').pop();
+  //       jobPhotoName = `job-photo-${Date.now()}.${photoExt}`;
+
+  //       await SojebStorage.put(jobPhotoPath + jobPhotoName, jobPhoto.buffer);
+  //     }
+
+  //     // Attachment processing
+  //     const createdAttachments = [];
+  //     for (const file of files) {
+  //       const ext = file.originalname.split('.').pop();
+  //       const fileName = `job-attachment-${Date.now()}-${Math.random().toString(16).slice(2)}.${ext}`;
+
+  //       await SojebStorage.put(attachmentPath + fileName, file.buffer);
+
+  //       const attachment = await tx.attachment.create({
+  //         data: {
+  //           name: file.originalname,
+  //           type: file.mimetype,
+  //           size: file.size,
+  //           file: fileName,
+  //         },
+  //       });
+  //       createdAttachments.push(attachment);
+  //     }
+
+  //     // Create job
+  //     const job = await tx.jOB.create({
+  //       data: {
+  //         ...dto,
+  //         user_id: userId,
+  //         job_photo: jobPhotoName,
+  //         attachment: {
+  //           connect: createdAttachments.map((a) => ({ id: a.id })),
+  //         },
+  //       },
+  //       include: {
+  //         attachment: true,
+  //       },
+  //     });
+
+  //     return {
+  //       success: true,
+  //       message: 'Job created successfully',
+  //       data: {
+  //         ...job,
+  //         job_photo_url: job.job_photo
+  //           ? SojebStorage.url(jobPhotoPath + job.job_photo)
+  //           : null,
+  //         attachment: job.attachment.map((att) => ({
+  //           ...att,
+  //           file_url: att.file
+  //             ? SojebStorage.url(attachmentPath + att.file)
+  //             : null,
+  //         })),
+  //       },
+  //     };
+  //   });
+  // }
 
   async createJob(
     userId: string,
@@ -39,8 +117,22 @@ export class JobsService {
       throw new BadRequestException('At least one attachment file is required');
     }
 
+    // Minimum Payout Mapping (Image Table onujayi)
+    const MIN_PAYOUT_MAP: Record<string, number> = {
+      MIN_1_5: 5.0,
+      MIN_5_10: 8.0,
+      MIN_10_15: 12.0,
+      MIN_15_20: 16.0,
+      MIN_20_30: 20.0,
+      MIN_30_40: 25.0,
+      MIN_40_50: 30.0,
+      MIN_50_60: 40.0,
+      MIN_60_120: 30.0,
+      MIN_120: 10.0,
+    };
+
     return this.prisma.$transaction(async (tx) => {
-      // ⬇️ NEW: User type check logic
+      // 2. User type check
       const user = await tx.user.findUnique({
         where: { id: userId },
         select: { type: true },
@@ -49,32 +141,43 @@ export class JobsService {
       if (!user || user.type !== 'CLIENT') {
         throw new ForbiddenException('Only clients are allowed to create jobs');
       }
-      // ⬆️ End of check
 
-      const attachmentPath = appConfig().storageUrl.attachment.endsWith('/')
-        ? appConfig().storageUrl.attachment
-        : `${appConfig().storageUrl.attachment}/`;
+      // 3. Validation Logic: Content Length vs Total Payment
+      if (dto.content_length) {
+        const minRequired = MIN_PAYOUT_MAP[dto.content_length];
+        const userPayment = dto.total_payment || 0;
 
-      const jobPhotoPath = appConfig().storageUrl.jobPhoto.endsWith('/')
-        ? appConfig().storageUrl.jobPhoto
-        : `${appConfig().storageUrl.jobPhoto}/`;
+        if (userPayment < minRequired) {
+          const readableLength = dto.content_length
+            .replace('MIN_', '')
+            .replace('_', '-');
 
-      // Job photo filename logic
+          throw new BadRequestException(
+            `For ${readableLength} minutes content, total payment must be at least $${minRequired.toFixed(2)}. Current: $${userPayment.toFixed(2)}`,
+          );
+        }
+      }
+
+      // --- File storage and DB Creation logic ---
+
       let jobPhotoName: string | null = null;
       if (jobPhoto) {
         const photoExt = jobPhoto.originalname.split('.').pop();
         jobPhotoName = `job-photo-${Date.now()}.${photoExt}`;
-
-        await SojebStorage.put(jobPhotoPath + jobPhotoName, jobPhoto.buffer);
+        await SojebStorage.put(
+          appConfig().storageUrl.jobPhoto + jobPhotoName,
+          jobPhoto.buffer,
+        );
       }
 
-      // Attachment processing
       const createdAttachments = [];
       for (const file of files) {
         const ext = file.originalname.split('.').pop();
         const fileName = `job-attachment-${Date.now()}-${Math.random().toString(16).slice(2)}.${ext}`;
-
-        await SojebStorage.put(attachmentPath + fileName, file.buffer);
+        await SojebStorage.put(
+          appConfig().storageUrl.attachment + fileName,
+          file.buffer,
+        );
 
         const attachment = await tx.attachment.create({
           data: {
@@ -87,7 +190,6 @@ export class JobsService {
         createdAttachments.push(attachment);
       }
 
-      // Create job
       const job = await tx.jOB.create({
         data: {
           ...dto,
@@ -97,9 +199,7 @@ export class JobsService {
             connect: createdAttachments.map((a) => ({ id: a.id })),
           },
         },
-        include: {
-          attachment: true,
-        },
+        include: { attachment: true },
       });
 
       return {
@@ -108,12 +208,12 @@ export class JobsService {
         data: {
           ...job,
           job_photo_url: job.job_photo
-            ? SojebStorage.url(jobPhotoPath + job.job_photo)
+            ? SojebStorage.url(appConfig().storageUrl.jobPhoto + job.job_photo)
             : null,
           attachment: job.attachment.map((att) => ({
             ...att,
             file_url: att.file
-              ? SojebStorage.url(attachmentPath + att.file)
+              ? SojebStorage.url(appConfig().storageUrl.attachment + att.file)
               : null,
           })),
         },
