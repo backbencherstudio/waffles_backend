@@ -33,8 +33,9 @@ export class CreateJobDto {
   job_category: JobCategory;
 
   @IsOptional()
-  @IsString()
-  project_duration?: string;
+  @Type(() => Number)
+  @IsNumber()
+  project_duration?: number;
 
   @IsEnum(Platform)
   platform: Platform;

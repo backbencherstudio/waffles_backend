@@ -9,9 +9,7 @@ import {
   Post,
   Req,
   UseGuards,
-  UseInterceptors,
 } from '@nestjs/common';
-import { FileFieldsInterceptor } from '@nestjs/platform-express';
 import { JwtAuthGuard } from 'src/modules/auth/guards/jwt-auth.guard';
 import { BidsService } from './bids.service';
 import { CreateBidDto } from './dto/create-bid.dto';
@@ -22,16 +20,16 @@ import { UpdateBidDto } from './dto/update-bid.dto';
 export class BidsController {
   constructor(private readonly bidsService: BidsService) {}
 
-  @Post(':jobId')
-  @UseInterceptors(
-    FileFieldsInterceptor([{ name: 'attachments', maxCount: 10 }]),
-  )
+  @Post(':jobId/create')
   async create(
     @Req() req: any,
     @Param('jobId') jobId: string,
     @Body() dto: CreateBidDto,
   ) {
     const userId = req.user?.userId;
+
+    console.log('BIDS DATA', dto);
+
     if (!userId) throw new BadRequestException('User ID not found in request');
 
     const result = await this.bidsService.createBid(userId, dto, jobId);
@@ -55,9 +53,9 @@ export class BidsController {
     return this.bidsService.findOne(id);
   }
 
-  @Patch(':id')
-  update(@Param('id') id: string, @Body() updateBidDto: UpdateBidDto) {
-    return this.bidsService.updateBid(id, updateBidDto);
+  @Patch('accept/:bidId')
+  accept(@Param('bidId') bidId: string, @Body() dto: UpdateBidDto) {
+    return this.bidsService.updateBidStatus(bidId, dto);
   }
 
   @Delete(':id')

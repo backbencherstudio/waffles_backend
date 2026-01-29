@@ -225,9 +225,11 @@ export class HireService {
           project_duration: hire.project_duration,
           user_id: hire.user_id,
           status: hire.status,
-          remaining_time_formatted, // লিস্টে দেখার জন্য ফরম্যাট করা সময়
+          remaining_time_formatted,
           project_photo_url: hire.project_photo
-            ? `${photoPath}/${hire.project_photo}`
+            ? SojebStorage.url(
+                appConfig().storageUrl.jobPhoto + hire.project_photo,
+              )
             : null,
         };
       });
@@ -302,7 +304,9 @@ export class HireService {
       video_category: mappedHire.video_category,
       project_photo: mappedHire.project_photo,
       project_photo_url: mappedHire.project_photo
-        ? `${appConfig().storageUrl.jobPhoto}/${mappedHire.project_photo}`
+        ? SojebStorage.url(
+            appConfig().storageUrl.jobPhoto + mappedHire.project_photo,
+          )
         : null,
       video_duration: mappedHire.video_duration,
       description: mappedHire.description,

@@ -256,7 +256,7 @@ model JOB {
   content_length   ContentLength
   project_budget   Float?
   job_category     JobCategory
-  project_duration String?
+  project_duration Float?
   platform         Platform
   skill            String?
   reference        String?
@@ -267,6 +267,8 @@ model JOB {
   created_at       DateTime      @default(now())
   updated_at       DateTime      @updatedAt
   deleted_at       DateTime?
+  started_at       DateTime?
+  deadline         DateTime?
   user_id          String?
   user             User?         @relation(fields: [user_id], references: [id])
   attachment       Attachment[]
@@ -275,7 +277,7 @@ model JOB {
 model Bid {
   id       String    @id @default(cuid())
   amount   Float?
-  req_date DateTime?
+  req_date Float?
   message  String?
   jobId    String?
 

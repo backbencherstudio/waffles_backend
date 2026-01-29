@@ -13,6 +13,21 @@ import { UpdateJobDto } from './dto/update-job.dto';
 export class JobsService {
   constructor(private readonly prisma: PrismaService) {}
 
+  // countdown logic
+  private formatCountdown(durationInDays: string | number): string {
+    const daysNum = Number(durationInDays) || 0;
+    const ms = daysNum * 24 * 60 * 60 * 1000;
+
+    if (ms <= 0) return '0d 0h 0m 0s';
+
+    const days = Math.floor(ms / (24 * 60 * 60 * 1000));
+    const hours = Math.floor((ms % (24 * 60 * 60 * 1000)) / (60 * 60 * 1000));
+    const minutes = Math.floor((ms % (60 * 60 * 1000)) / (60 * 1000));
+    const seconds = Math.floor((ms % (60 * 1000)) / 1000);
+
+    return `${days}d ${hours}h ${minutes}m ${seconds}s`;
+  }
+
   async createJob(
     userId: string,
     dto: CreateJobDto,
@@ -121,7 +136,6 @@ export class JobsService {
         Number.isFinite(params.limit) && params.limit > 0 && params.limit <= 50
           ? params.limit
           : 10;
-
       const skip = (page - 1) * limit;
 
       const where: any = {
@@ -129,7 +143,6 @@ export class JobsService {
         deleted_at: null,
       };
 
-      //  Search (title/description)
       if (params.q?.trim()) {
         const q = params.q.trim();
         where.OR = [
@@ -138,7 +151,6 @@ export class JobsService {
         ];
       }
 
-      //  Filter by status (optional)
       if (params.status) {
         where.status = params.status;
       }
@@ -157,6 +169,7 @@ export class JobsService {
             created_at: true,
             status: true,
             job_photo: true,
+            deadline: true, // Notun add kora hoyeche
           },
         }),
       ]);
@@ -167,6 +180,12 @@ export class JobsService {
         amount: job.total_payment ?? 0,
         time: job.created_at,
         status: job.status,
+        deadline: job.deadline,
+        // Status jodi IN_PROGRESS hoy ebong deadline periye jay, tobe 'LATE' show korbe
+        is_late:
+          job.status === 'IN_PROGRESS' && job.deadline
+            ? new Date() > new Date(job.deadline)
+            : false,
         job_photo_url: job.job_photo
           ? SojebStorage.url(appConfig().storageUrl.jobPhoto + job.job_photo)
           : null,
@@ -174,29 +193,25 @@ export class JobsService {
 
       return {
         success: true,
-        message: 'All Jobs Post fetched successfully',
+        message: 'Jobs fetched successfully',
         pagination: {
           page,
           limit,
           total,
           totalPages: Math.ceil(total / limit),
         },
-        data: data,
+        data,
       };
     } catch (error) {
-      console.error('GET ALL JOBS ERROR:', error);
       return { success: false, message: 'Failed to fetch jobs', error };
     }
   }
 
   async getSingleJob(id: string) {
     try {
-      const job = (await this.prisma.jOB.findFirst({
+      const job = await this.prisma.jOB.findFirst({
         where: { id, deleted_at: null },
         include: {
-          // user: {
-          //   select: { id: true, name: true, email: true, avatar: true },
-          // },
           bids: {
             where: { deleted_at: null },
             include: {
@@ -207,15 +222,31 @@ export class JobsService {
             orderBy: { created_at: 'desc' },
           },
         },
-      })) as any;
+      });
 
       if (!job) return { success: false, message: 'Job not found' };
 
-      const formattedBids = job?.bids?.map((b: any) => ({
+      // Countdown Logic: Baki koto milisecond ache ta calculate kora
+      let remainingTimeMs = null;
+      let isLate = false;
+
+      if (job.status === 'IN_PROGRESS' && job.deadline) {
+        const now = new Date().getTime();
+        const deadlineTime = new Date(job.deadline).getTime();
+        remainingTimeMs = deadlineTime - now;
+        if (remainingTimeMs < 0) {
+          isLate = true;
+          remainingTimeMs = 0; // Late hoye gele countdown 0 hobe
+        }
+      }
+
+      const formattedBids = job.bids.map((b) => ({
         id: b.id,
         amount: b.amount,
         message: b.message,
+        req_date: b.req_date, // Deadline bujhar jonno
         created_at: b.created_at,
+        status: b.status,
         user: {
           ...b.user,
           avatar: b.user?.avatar
@@ -233,10 +264,14 @@ export class JobsService {
             ? SojebStorage.url(appConfig().storageUrl.jobPhoto + job.job_photo)
             : null,
           bids: formattedBids,
+          countdown: {
+            remaining_ms: remainingTimeMs,
+            is_late: isLate,
+            deadline: job.deadline,
+          },
         },
       };
     } catch (error) {
-      console.error('GET SINGLE JOB ERROR:', error);
       return {
         success: false,
         message: 'Failed to fetch job',
