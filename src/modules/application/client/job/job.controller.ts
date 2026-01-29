@@ -20,15 +20,15 @@ import { UpdateJobDto } from './dto/update-job.dto';
 import { JobsService } from './job.service';
 
 @Controller('jobs')
+@UseGuards(JwtAuthGuard)
 export class JobsController {
   constructor(private readonly jobsService: JobsService) {}
 
   @Post()
-  @UseGuards(JwtAuthGuard)
   @UseInterceptors(
     FileFieldsInterceptor([
-      { name: 'attachment', maxCount: 10 }, // ✅ multiple
-      { name: 'job_photo', maxCount: 1 }, // ✅ single
+      { name: 'attachment', maxCount: 10 }, 
+      { name: 'job_photo', maxCount: 1 }, 
     ]),
   )
   async createJob(
@@ -53,9 +53,9 @@ export class JobsController {
     return this.jobsService.createJob(userId, dto, attachments, jobPhoto);
   }
 
-  @Get('all')
-  @UseGuards(JwtAuthGuard)
-  getAll(
+
+  @Get('allJobsByUser')
+  getAllJobs(
     @Req() req: any,
     @Query('page') page = '1',
     @Query('limit') limit = '10',
@@ -72,15 +72,26 @@ export class JobsController {
       userId,
     });
   }
+  @Get('allPublicJobs')
+  getAllPublicJobs(
+    @Req() req: any,
+    @Query('page') page = '1',
+    @Query('limit') limit = '10',
+    @Query('q') q = '',
+  ) {
+    return this.jobsService.getAllPublicJobs({
+      page: parseInt(page, 10),
+      limit: parseInt(limit, 10),
+      q,
+    });
+  }
 
   @Get(':jobId')
-  @UseGuards(JwtAuthGuard)
   getSingleJob(@Param('jobId') jobId: string) {
     return this.jobsService.getSingleJob(jobId);
   }
 
   @Patch(':id')
-  @UseGuards(JwtAuthGuard)
   update(@Param('id') id: string, @Body() dto: UpdateJobDto) {
     return this.jobsService.update(id, dto);
   }

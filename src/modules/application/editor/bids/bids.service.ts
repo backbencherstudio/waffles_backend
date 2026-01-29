@@ -18,7 +18,6 @@ export class BidsService {
     try {
       const user = await this.prisma.user.findUnique({
         where: { id: userId },
-
         select: { type: true },
       });
 
