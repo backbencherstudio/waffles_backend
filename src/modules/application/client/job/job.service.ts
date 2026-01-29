@@ -121,7 +121,119 @@ export class JobsService {
     });
   }
 
-  //get all job
+  async getAllPublicJobs(params: { page: number; limit: number; q?: string }) {
+    try {
+      const page =
+        Number.isFinite(params.page) && params.page > 0 ? params.page : 1;
+      const limit =
+        Number.isFinite(params.limit) && params.limit > 0 && params.limit <= 50
+          ? params.limit
+          : 10;
+      const skip = (page - 1) * limit;
+
+      const where: any = {
+        deleted_at: null,
+        status: 'PENDING',
+      };
+
+      if (params.q?.trim()) {
+        const q = params.q.trim();
+        where.OR = [
+          { job_title: { contains: q, mode: 'insensitive' } },
+          { job_description: { contains: q, mode: 'insensitive' } },
+        ];
+      }
+
+      const [total, jobs] = await this.prisma.$transaction([
+        this.prisma.jOB.count({ where }),
+        this.prisma.jOB.findMany({
+          where,
+          orderBy: { created_at: 'desc' },
+          skip,
+          take: limit,
+          select: {
+            id: true,
+            job_title: true,
+            total_payment: true,
+            created_at: true,
+            job_description: true,
+            project_duration: true,
+            status: true,
+            job_photo: true,
+            deadline: true,
+          },
+        }),
+      ]);
+
+      const now = new Date().getTime();
+
+      const data = jobs.map((job) => {
+        let remainingTimeMs = null;
+        let isLate = false;
+        let displayDuration: any = job.project_duration;
+
+        if (job.status === 'PENDING') {
+          // 1. PENDING hole: Sudhu project_duration (din) ke fixed ms format-e dekhabo
+          if (job.project_duration) {
+            remainingTimeMs =
+              Number(job.project_duration) * 24 * 60 * 60 * 1000;
+          }
+          displayDuration = job.project_duration; // Fixed value (e.g., 5)
+        } else if (job.status === 'IN_PROGRESS') {
+          // 2. IN_PROGRESS hole: Deadline theke real-time countdown
+          if (job.deadline) {
+            const deadlineTime = new Date(job.deadline).getTime();
+            remainingTimeMs = deadlineTime - now;
+
+            if (remainingTimeMs < 0) {
+              isLate = true;
+              remainingTimeMs = 0;
+            }
+          }
+          // In-progress e amra project_duration field-eo countdown pathai
+          displayDuration = remainingTimeMs;
+        }
+
+        return {
+          id: job.id,
+          title: job.job_title,
+          amount: job.total_payment ?? 0,
+          job_description: job.job_description,
+          project_duration: displayDuration,
+          status: job.status,
+          created_at: job.created_at,
+          job_photo_url: job.job_photo
+            ? SojebStorage.url(appConfig().storageUrl.jobPhoto + job.job_photo)
+            : null,
+          countdown: {
+            remaining_ms: remainingTimeMs,
+            is_late: isLate,
+            deadline: job.deadline,
+          },
+        };
+      });
+
+      return {
+        success: true,
+        message: 'Jobs fetched successfully',
+        pagination: {
+          page,
+          limit,
+          total,
+          totalPages: Math.ceil(total / limit),
+        },
+        data,
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: 'Failed to fetch jobs',
+        error: error.message,
+      };
+    }
+  }
+
+  //get all job by user id and status dynamically
   async getAllJobs(params: {
     page: number;
     limit: number;
@@ -141,6 +253,7 @@ export class JobsService {
       const where: any = {
         user_id: params.userId,
         deleted_at: null,
+        status: params.status || 'PENDING',
       };
 
       if (params.q?.trim()) {
@@ -149,10 +262,6 @@ export class JobsService {
           { job_title: { contains: q, mode: 'insensitive' } },
           { job_description: { contains: q, mode: 'insensitive' } },
         ];
-      }
-
-      if (params.status) {
-        where.status = params.status;
       }
 
       const [total, jobs] = await this.prisma.$transaction([
@@ -167,29 +276,62 @@ export class JobsService {
             job_title: true,
             total_payment: true,
             created_at: true,
+            job_description: true,
+            project_duration: true,
             status: true,
             job_photo: true,
-            deadline: true, // Notun add kora hoyeche
+            deadline: true,
           },
         }),
       ]);
 
-      const data = jobs.map((job) => ({
-        id: job.id,
-        title: job.job_title,
-        amount: job.total_payment ?? 0,
-        time: job.created_at,
-        status: job.status,
-        deadline: job.deadline,
-        // Status jodi IN_PROGRESS hoy ebong deadline periye jay, tobe 'LATE' show korbe
-        is_late:
-          job.status === 'IN_PROGRESS' && job.deadline
-            ? new Date() > new Date(job.deadline)
-            : false,
-        job_photo_url: job.job_photo
-          ? SojebStorage.url(appConfig().storageUrl.jobPhoto + job.job_photo)
-          : null,
-      }));
+      const now = new Date().getTime();
+
+      const data = jobs.map((job) => {
+        let remainingTimeMs = null;
+        let isLate = false;
+        let displayDuration: any = job.project_duration;
+
+        if (job.status === 'PENDING') {
+          // 1. PENDING hole: Sudhu project_duration (din) ke fixed ms format-e dekhabo
+          if (job.project_duration) {
+            remainingTimeMs =
+              Number(job.project_duration) * 24 * 60 * 60 * 1000;
+          }
+          displayDuration = job.project_duration; // Fixed value (e.g., 5)
+        } else if (job.status === 'IN_PROGRESS') {
+          // 2. IN_PROGRESS hole: Deadline theke real-time countdown
+          if (job.deadline) {
+            const deadlineTime = new Date(job.deadline).getTime();
+            remainingTimeMs = deadlineTime - now;
+
+            if (remainingTimeMs < 0) {
+              isLate = true;
+              remainingTimeMs = 0;
+            }
+          }
+          // In-progress e amra project_duration field-eo countdown pathai
+          displayDuration = remainingTimeMs;
+        }
+
+        return {
+          id: job.id,
+          title: job.job_title,
+          amount: job.total_payment ?? 0,
+          job_description: job.job_description,
+          project_duration: displayDuration,
+          status: job.status,
+          created_at: job.created_at,
+          job_photo_url: job.job_photo
+            ? SojebStorage.url(appConfig().storageUrl.jobPhoto + job.job_photo)
+            : null,
+          countdown: {
+            remaining_ms: remainingTimeMs,
+            is_late: isLate,
+            deadline: job.deadline,
+          },
+        };
+      });
 
       return {
         success: true,
@@ -203,7 +345,11 @@ export class JobsService {
         data,
       };
     } catch (error) {
-      return { success: false, message: 'Failed to fetch jobs', error };
+      return {
+        success: false,
+        message: 'Failed to fetch jobs',
+        error: error.message,
+      };
     }
   }
 
