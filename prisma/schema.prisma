@@ -275,7 +275,7 @@ model JOB {
 }
 
 model Bid {
-  id       String    @id @default(cuid())
+  id       String  @id @default(cuid())
   amount   Float?
   req_date Float?
   message  String?
@@ -316,6 +316,25 @@ model Hire {
   startedAt DateTime?
 
   @@map("hires")
+}
+
+model Review {
+  id                    String  @id @default(cuid())
+  rating                Int
+  comment               String? @db.VarChar(300)
+  communication_quality Int?
+  on_time_delivery      Int?
+  value_for_money       Int?
+  would_recommend       Int?
+
+  attachments Attachment[]
+
+  user_id             String
+  service_provider_id String
+  created_at          DateTime @default(now())
+  updated_at          DateTime @updatedAt
+
+  @@map("reviews")
 }
 
 model Role {
@@ -503,6 +522,8 @@ model Attachment {
   jobs     JOB[]
   hire     Hire?     @relation(fields: [hire_id], references: [id])
   hire_id  String?
+  review   Review?   @relation(fields: [reviewId], references: [id])
+  reviewId String?
 
   @@map("attachments")
 }
