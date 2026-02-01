@@ -4,6 +4,7 @@ import { ContactModule } from './contact/contact.module';
 import { EditorModule } from './editor/editor.module';
 import { FaqModule } from './faq/faq.module';
 import { NotificationModule } from './notification/notification.module';
+import { ReviewModule } from './review/review.module';
 
 @Module({
   imports: [
@@ -12,6 +13,7 @@ import { NotificationModule } from './notification/notification.module';
     FaqModule,
     EditorModule,
     ClientModule,
+    ReviewModule,
   ],
 })
 export class ApplicationModule {}
