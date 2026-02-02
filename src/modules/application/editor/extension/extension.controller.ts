@@ -16,23 +16,13 @@ export class ExtensionController {
     return this.extensionService.createRequest(user_id, jobId, createExtensionDto);
   }
 
-  // @Get()
-  // findAll() {
-  //   return this.extensionService.findAll();
-  // }
-
-  // @Get(':id')
-  // findOne(@Param('id') id: string) {
-  //   return this.extensionService.findOne(+id);
-  // }
-
-  // @Patch(':id')
-  // update(@Param('id') id: string, @Body() updateExtensionDto: UpdateExtensionDto) {
-  //   return this.extensionService.update(+id, updateExtensionDto);
-  // }
-
-  // @Delete(':id')
-  // remove(@Param('id') id: string) {
-  //   return this.extensionService.remove(+id);
-  // }
+@Patch(':requestId/action')
+  async handleAction(
+    @Req() req: any,
+    @Param('requestId') requestId: string,
+    @Body('status') status: 'APPROVED' | 'REJECTED',
+  ) {
+    const user_id = req.user?.userId;
+    return this.extensionService.processRequest(user_id, requestId, status);
+  }
 }
