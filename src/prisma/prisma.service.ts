@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import appConfig from '../config/app.config';
 import { PrismaClient } from 'prisma/generated/client';
+import { PrismaPg } from '@prisma/adapter-pg';
 
 @Injectable()
 export class PrismaService
@@ -21,9 +22,9 @@ export class PrismaService
       throw new Error('DATABASE_URL is not defined in environment variables');
     }
 
-    super({
-      datasourceUrl,
-    });
+    const adapter = new PrismaPg({ connectionString: datasourceUrl });
+
+    super({ adapter });
 
     if (process.env.PRISMA_ENV == '1') {
       this.logger.log('Prisma Middleware disabled');
