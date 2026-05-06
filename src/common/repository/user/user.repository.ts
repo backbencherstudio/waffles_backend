@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
-import { UserType } from '@prisma/client';
+import { UserType } from '../../../../prisma/generated/enums';
 import * as QRCode from 'qrcode';
 import * as speakeasy from 'speakeasy';
 import appConfig from '../../../config/app.config';
@@ -504,12 +504,6 @@ export class UserRepository {
           message: 'User not found',
         };
       }
-      if (userDetails.type == UserType.HOMEOWNER) {
-        return {
-          success: false,
-          message: 'User is already a homeowner',
-        };
-      }
       await this.prisma.user.update({
         where: { id: user_id },
         data: { type: type as UserType },
@@ -621,5 +615,51 @@ export class UserRepository {
       },
     });
     return users;
+  }
+
+  // get all clients
+  async getAllClients() {
+    try {
+      const clients = await this.prisma.user.findMany({
+        where: {
+          type: UserType.CLIENT,
+        },
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          type: true,
+        },
+      });
+      return clients;
+    } catch (error) {
+      return {
+        success: false,
+        message: error.message,
+      };
+    }
+  }
+
+  // get all editors
+  async getAllEditors() {
+    try {
+      const editors = await this.prisma.user.findMany({
+        where: {
+          type: UserType.EDITOR,
+        },
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          type: true,
+        },
+      });
+      return editors;
+    } catch (error) {
+      return {
+        success: false,
+        message: error.message,
+      };
+    }
   }
 }

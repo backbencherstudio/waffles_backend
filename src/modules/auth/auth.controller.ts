@@ -81,7 +81,7 @@ export class AuthController {
       });
 
       return response;
-    } catch (error) {
+    } catch (error: any) {
       return {
         success: false,
         message: error.message,
