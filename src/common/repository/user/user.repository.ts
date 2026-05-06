@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
-import { UserType } from 'prisma/generated/client';
+import { UserType } from '@prisma/client';
 import * as QRCode from 'qrcode';
 import * as speakeasy from 'speakeasy';
 import appConfig from '../../../config/app.config';
@@ -35,48 +35,6 @@ export class UserRepository {
     return user;
   }
 
-  // get all clients
-  async getAllClients() {
-    try {
-      const clients = await this.prisma.user.findMany({
-        where: {
-          type: UserType.CLIENT,
-        },
-      });
-      return {
-        success: true,
-        message: 'All clients fetched successfully',
-        data: clients,
-      };
-    } catch (error) {
-      return {
-        success: false,
-        message: error.message,
-      };
-    }
-  }
-
-  // get all editors
-  async getAllEditors() {
-    try {
-      const editors = await this.prisma.user.findMany({
-        where: {
-          type: UserType.EDITOR,
-        },
-      });
-      return {
-        success: true,
-        message: 'All editors fetched successfully',
-        data: editors,
-      };
-    } catch (error) {
-      return {
-        success: false,
-        message: error.message,
-      };
-    }
-  }
-
   /**
    * get user details
    * @returns
@@ -86,7 +44,10 @@ export class UserRepository {
       where: {
         id: userId,
       },
-      include: {
+      select: {
+        id: true,
+        email: true,
+        type: true,
         role_users: {
           include: {
             role: {
@@ -222,6 +183,9 @@ export class UserRepository {
    * @returns
    */
   async createUser({
+    first_name,
+    last_name,
+    address,
     name,
     email,
     password,
@@ -232,6 +196,7 @@ export class UserRepository {
     first_name?: string;
     last_name?: string;
     email: string;
+    address?: string;
     password: string;
     phone_number?: string;
     role_id?: string;
@@ -269,6 +234,18 @@ export class UserRepository {
 
       if (type && ArrayHelper.inArray(type, Object.values(Role))) {
         data['type'] = type;
+      }
+
+      if (first_name) {
+        data['first_name'] = first_name;
+      }
+
+      if (last_name) {
+        data['last_name'] = last_name;
+      }
+
+      if (address) {
+        data['address'] = address;
       }
 
       const user = await this.prisma.user.create({
@@ -527,10 +504,10 @@ export class UserRepository {
           message: 'User not found',
         };
       }
-      if (userDetails.type == UserType.EDITOR) {
+      if (userDetails.type == UserType.HOMEOWNER) {
         return {
           success: false,
-          message: 'User is already an editor',
+          message: 'User is already a homeowner',
         };
       }
       await this.prisma.user.update({
@@ -614,5 +591,35 @@ export class UserRepository {
       data: { is_two_factor_enabled: 0, two_factor_secret: null },
     });
     return user;
+  }
+
+  // get user information
+  async getUserInfo(user_id: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: user_id },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        type: true,
+        location: true,
+      },
+    });
+    return user;
+  }
+
+  // get admin users
+  async getAdminUser() {
+    const users = await this.prisma.user.findFirst({
+      where: {
+        type: UserType.ADMIN,
+      },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+      },
+    });
+    return users;
   }
 }
