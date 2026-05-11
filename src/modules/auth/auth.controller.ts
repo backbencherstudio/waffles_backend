@@ -132,9 +132,6 @@ export class AuthController {
       const user_id = req.user.id;
       const user_email = req.user.email;
 
-      console.log('user_id', user_id);
-      console.log('user_email', user_email);
-
       const response = await this.authService.login({
         userId: user_id,
         email: user_email,
@@ -147,7 +144,6 @@ export class AuthController {
         maxAge: 1000 * 60 * 60 * 24 * 7, // 7 days
       });
 
-      console.log(response);
       res.json(response);
     } catch (error) {
       return {

@@ -66,6 +66,7 @@ export class ProfileService {
       data: formatedData(user),
     };
   }
+  
 
   // *profile info update
   async updateBasicProfile(
