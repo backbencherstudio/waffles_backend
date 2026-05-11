@@ -66,7 +66,7 @@ export class ProfileService {
       data: formatedData(user),
     };
   }
-  
+
 
   // *profile info update
   async updateBasicProfile(
@@ -253,9 +253,16 @@ export class ProfileService {
   // topic:education
 
   // *create education
-  async createEducation(userId: string, createEducationDto: CreateEducationDto) {
+  async createEducation(
+    userId: string, 
+    createEducationDto: CreateEducationDto
+  ) {
    
-    const { course_name, subject, passing_year } = createEducationDto;
+    const { 
+      course_name, 
+      subject, 
+      passing_year 
+    } = createEducationDto;
 
     const education = await this.prisma.education.create({
       data: {
@@ -279,6 +286,7 @@ export class ProfileService {
     };
   }
 
+  
   // *update education
   async updateEducation(
     userId: string, 
