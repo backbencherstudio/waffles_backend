@@ -67,7 +67,6 @@ export class ProfileService {
     };
   }
 
-
   // *profile info update
   async updateBasicProfile(
     userId: string,
@@ -286,7 +285,6 @@ export class ProfileService {
     };
   }
 
-  
   // *update education
   async updateEducation(
     userId: string, 
@@ -348,6 +346,7 @@ export class ProfileService {
     };
   }
 
+  
   
 
 }
