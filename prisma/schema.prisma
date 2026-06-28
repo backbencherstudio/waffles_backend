@@ -110,6 +110,9 @@ model User {
   jobs                 JOB[]
   bids                 Bid[]
   hires                Hire[]
+  extensionRequests    ExtensionRequest[]
+  deliveries           Delivery[]
+  reviews              Review[]
 
   @@map("users")
 }
@@ -256,29 +259,32 @@ enum SoftwarePreference {
 }
 
 model JOB {
-  id               String        @id @default(cuid())
-  job_title        String?
-  job_description  String?
-  job_photo        String?
-  content_length   ContentLength
-  project_budget   Float?
-  job_category     JobCategory
-  project_duration Float?
-  platform         Platform
-  skill            String?
-  reference        String?
-  total_payment    Float?
-  fileId           String?
-  status           JobStatus     @default(PENDING)
-  bids             Bid[]
-  created_at       DateTime      @default(now())
-  updated_at       DateTime      @updatedAt
-  deleted_at       DateTime?
-  started_at       DateTime?
-  deadline         DateTime?
-  user_id          String?
-  user             User?         @relation(fields: [user_id], references: [id])
-  attachment       Attachment[]
+  id                String             @id @default(cuid())
+  job_title         String?
+  job_description   String?
+  job_photo         String?
+  content_length    ContentLength
+  project_budget    Float?
+  job_category      JobCategory
+  project_duration  Float?
+  platform          Platform
+  skill             String?
+  reference         String?
+  total_payment     Float?
+  fileId            String?
+  status            JobStatus          @default(PENDING)
+  bids              Bid[]
+  created_at        DateTime           @default(now())
+  updated_at        DateTime           @updatedAt
+  deleted_at        DateTime?
+  started_at        DateTime?
+  deadline          DateTime?
+  user_id           String?
+  user              User?              @relation(fields: [user_id], references: [id])
+  attachment        Attachment[]
+  deliveries        Delivery[]
+  extensionRequests ExtensionRequest[]
+  reviews           Review[]
 }
 
 model Bid {
@@ -323,6 +329,89 @@ model Hire {
   startedAt DateTime?
 
   @@map("hires")
+}
+
+model Review {
+  id                    String  @id @default(cuid())
+  rating                Int
+  comment               String? @db.VarChar(300)
+  communication_quality Int?
+  on_time_delivery      Int?
+  value_for_money       Int?
+  would_recommend       Int?
+
+  attachments Attachment[]
+
+  user_id             String
+  job_id              String?
+  delivery_id         String?
+  service_provider_id String
+  created_at          DateTime @default(now())
+  updated_at          DateTime @updatedAt
+
+  user     User      @relation(fields: [user_id], references: [id])
+  job      JOB?      @relation(fields: [job_id], references: [id])
+  delivery Delivery? @relation(fields: [delivery_id], references: [id])
+
+  @@map("reviews")
+}
+
+enum DeliveryStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+  REVISION_REQUESTED
+}
+
+model Delivery {
+  id          String       @id @default(uuid())
+  job_id      String?
+  user_id     String?
+  message     String?      @db.Text
+  attachments Attachment[]
+
+  extend_time   Int?
+  previous_date DateTime?
+
+  status DeliveryStatus @default(PENDING)
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  job     JOB?     @relation(fields: [job_id], references: [id])
+  user    User?    @relation(fields: [user_id], references: [id])
+  reviews Review[]
+
+  @@map("deliveries")
+}
+
+enum ExtensionStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model ExtensionRequest {
+  id      String @id @default(uuid())
+  job_id  String
+  user_id String
+
+  message        String @db.VarChar(300)
+  extension_days Int
+
+  original_date DateTime
+
+  new_date DateTime?
+
+  status ExtensionStatus @default(PENDING)
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  job  JOB?  @relation(fields: [job_id], references: [id])
+  user User? @relation(fields: [user_id], references: [id])
+
+  @@map("extension_requests")
 }
 
 model Role {
@@ -506,10 +595,14 @@ model Attachment {
   file     String?
   file_alt String?
 
-  messages Message[]
-  jobs     JOB[]
-  hire     Hire?     @relation(fields: [hire_id], references: [id])
-  hire_id  String?
+  messages   Message[]
+  jobs       JOB[]
+  hire       Hire?     @relation(fields: [hire_id], references: [id])
+  hire_id    String?
+  review     Review?   @relation(fields: [reviewId], references: [id])
+  reviewId   String?
+  delivery   Delivery? @relation(fields: [deliveryId], references: [id])
+  deliveryId String?
 
   @@map("attachments")
 }
