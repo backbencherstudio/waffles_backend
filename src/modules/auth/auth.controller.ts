@@ -14,7 +14,18 @@ import {
 } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import {
+  ApiBearerAuth,
+  ApiBody,
+  ApiConsumes,
+  ApiOkResponse,
+  ApiOperation,
+  ApiUnauthorizedResponse,
+  ApiBadRequestResponse,
+  ApiTags,
+  ApiExtraModels,
+  getSchemaPath,
+} from '@nestjs/swagger';
 import { Request, Response } from 'express';
 import { memoryStorage } from 'multer';
 import { LocalAuthGuard } from 'src/modules/auth/guards/local-auth.guard';
@@ -23,15 +34,19 @@ import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { VerifyEmailDto } from './dto/verify-email.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
+import { USER_TYPES } from 'src/common/swagger/swagger-auth';
 
 @ApiTags('auth')
+@ApiExtraModels(CreateUserDto, UpdateUserDto, VerifyEmailDto)
 @Controller('auth')
 export class AuthController {
   constructor(private authService: AuthService) {}
 
   // *get user details
   @ApiOperation({ summary: 'Get user details' })
-  @ApiBearerAuth()
+  @ApiBearerAuth(USER_TYPES.CLIENT)
+  @ApiOkResponse({ description: 'Authenticated user profile returned successfully.' })
+  @ApiUnauthorizedResponse({ description: 'Missing or invalid JWT token.' })
   @UseGuards(JwtAuthGuard)
   @Get('me')
   async me(@Req() req: Request) {
@@ -51,6 +66,9 @@ export class AuthController {
 
   // *register user
   @ApiOperation({ summary: 'Register a user' })
+  @ApiBody({ type: CreateUserDto })
+  @ApiOkResponse({ description: 'User registered successfully.' })
+  @ApiBadRequestResponse({ description: 'Validation or payload error.' })
   @Post('register')
   async create(@Body() data: CreateUserDto) {
     try {
@@ -81,7 +99,7 @@ export class AuthController {
       });
 
       return response;
-    } catch (error) {
+    } catch (error: any) {
       return {
         success: false,
         message: error.message,
@@ -91,7 +109,9 @@ export class AuthController {
 
   // get all clients
   @ApiOperation({ summary: 'Get all clients' })
-  @ApiBearerAuth()
+  @ApiBearerAuth(USER_TYPES.ADMIN)
+  @ApiOkResponse({ description: 'Client list fetched successfully.' })
+  @ApiUnauthorizedResponse({ description: 'Missing or invalid JWT token.' })
   @UseGuards(JwtAuthGuard)
   @Get('clients')
   async getAllClients() {
@@ -108,7 +128,9 @@ export class AuthController {
 
   // get all editors
   @ApiOperation({ summary: 'Get all editors' })
-  @ApiBearerAuth()
+  @ApiBearerAuth(USER_TYPES.ADMIN)
+  @ApiOkResponse({ description: 'Editor list fetched successfully.' })
+  @ApiUnauthorizedResponse({ description: 'Missing or invalid JWT token.' })
   // @UseGuards(JwtAuthGuard)
   @Get('editors')
   async getAllEditors() {
@@ -125,15 +147,24 @@ export class AuthController {
 
   // *login user
   @ApiOperation({ summary: 'Login user' })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      required: ['email', 'password'],
+      properties: {
+        email: { type: 'string', example: 'john@example.com' },
+        password: { type: 'string', example: 'password123' },
+      },
+    },
+  })
+  @ApiOkResponse({ description: 'Login successful. Access and refresh token returned.' })
+  @ApiUnauthorizedResponse({ description: 'Invalid credentials.' })
   @UseGuards(LocalAuthGuard)
   @Post('login')
   async login(@Req() req: Request, @Res() res: Response) {
     try {
       const user_id = req.user.id;
       const user_email = req.user.email;
-
-      console.log('user_id', user_id);
-      console.log('user_email', user_email);
 
       const response = await this.authService.login({
         userId: user_id,
@@ -147,7 +178,6 @@ export class AuthController {
         maxAge: 1000 * 60 * 60 * 24 * 7, // 7 days
       });
 
-      console.log(response);
       res.json(response);
     } catch (error) {
       return {
@@ -159,6 +189,17 @@ export class AuthController {
 
   // *forgot password
   @ApiOperation({ summary: 'Forgot password' })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      required: ['email'],
+      properties: {
+        email: { type: 'string', example: 'john@example.com' },
+      },
+    },
+  })
+  @ApiOkResponse({ description: 'Password reset token sent to email.' })
+  @ApiBadRequestResponse({ description: 'Email is missing or invalid.' })
   @Post('forgot-password')
   async forgotPassword(@Body() data: { email: string }) {
     try {
@@ -177,6 +218,9 @@ export class AuthController {
 
   // *verify email
   @ApiOperation({ summary: 'Verify email' })
+  @ApiBody({ type: VerifyEmailDto })
+  @ApiOkResponse({ description: 'Email verification successful.' })
+  @ApiBadRequestResponse({ description: 'Email or token missing/invalid.' })
   @Post('verify-email')
   async verifyEmail(@Body() data: VerifyEmailDto) {
     try {
@@ -202,6 +246,17 @@ export class AuthController {
 
   // *resend verification email to verify the email
   @ApiOperation({ summary: 'Resend verification email' })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      required: ['email'],
+      properties: {
+        email: { type: 'string', example: 'john@example.com' },
+      },
+    },
+  })
+  @ApiOkResponse({ description: 'Verification email resent successfully.' })
+  @ApiBadRequestResponse({ description: 'Email is missing or invalid.' })
   @Post('resend-verification-email')
   async resendVerificationEmail(@Body() data: { email: string }) {
     try {
@@ -220,6 +275,19 @@ export class AuthController {
 
   // *reset password if user forget the password
   @ApiOperation({ summary: 'Reset password' })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      required: ['email', 'token', 'password'],
+      properties: {
+        email: { type: 'string', example: 'john@example.com' },
+        token: { type: 'string', example: '123456' },
+        password: { type: 'string', example: 'new-password-123' },
+      },
+    },
+  })
+  @ApiOkResponse({ description: 'Password reset successful.' })
+  @ApiBadRequestResponse({ description: 'Invalid email/token/password payload.' })
   @Post('reset-password')
   async resetPassword(
     @Body() data: { email: string; token: string; password: string },
@@ -255,6 +323,17 @@ export class AuthController {
 
   // *resend token
   @ApiOperation({ summary: 'Resend reset password token' })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      required: ['email'],
+      properties: {
+        email: { type: 'string', example: 'john@example.com' },
+      },
+    },
+  })
+  @ApiOkResponse({ description: 'Reset token resent successfully.' })
+  @ApiBadRequestResponse({ description: 'Email is missing or invalid.' })
   @Post('resend-token')
   async resendToken(@Body() data: { email: string }) {
     try {
@@ -273,6 +352,18 @@ export class AuthController {
 
   // *veify token
   @ApiOperation({ summary: 'Verify reset password token' })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      required: ['email', 'token'],
+      properties: {
+        email: { type: 'string', example: 'john@example.com' },
+        token: { type: 'string', example: '123456' },
+      },
+    },
+  })
+  @ApiOkResponse({ description: 'Reset token is valid.' })
+  @ApiBadRequestResponse({ description: 'Email or token missing/invalid.' })
   @Post('verify-token')
   async verifyToken(@Body() data: { email: string; token: string }) {
     try {
@@ -298,7 +389,19 @@ export class AuthController {
 
   // change password if user want to change the password
   @ApiOperation({ summary: 'Change password' })
-  @ApiBearerAuth()
+  @ApiBearerAuth(USER_TYPES.CLIENT)
+  @ApiBody({
+    schema: {
+      type: 'object',
+      required: ['old_password', 'new_password'],
+      properties: {
+        old_password: { type: 'string', example: 'old-password-123' },
+        new_password: { type: 'string', example: 'new-password-123' },
+      },
+    },
+  })
+  @ApiOkResponse({ description: 'Password changed successfully.' })
+  @ApiUnauthorizedResponse({ description: 'Missing or invalid JWT token.' })
   @UseGuards(JwtAuthGuard)
   @Post('change-password')
   async changePassword(
@@ -342,7 +445,18 @@ export class AuthController {
   //-----------------------------------------------(end)----------------------------------------------------------------------
 
   @ApiOperation({ summary: 'Refresh token' })
-  @ApiBearerAuth()
+  @ApiBearerAuth(USER_TYPES.CLIENT)
+  @ApiBody({
+    schema: {
+      type: 'object',
+      required: ['refresh_token'],
+      properties: {
+        refresh_token: { type: 'string', example: 'refresh-token-value' },
+      },
+    },
+  })
+  @ApiOkResponse({ description: 'Access token refreshed successfully.' })
+  @ApiUnauthorizedResponse({ description: 'Missing or invalid JWT token.' })
   @UseGuards(JwtAuthGuard)
   @Post('refresh-token')
   async refreshToken(
@@ -366,7 +480,10 @@ export class AuthController {
     }
   }
 
-  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Logout user' })
+  @ApiBearerAuth(USER_TYPES.CLIENT)
+  @ApiOkResponse({ description: 'Logged out successfully.' })
+  @ApiUnauthorizedResponse({ description: 'Missing or invalid JWT token.' })
   @UseGuards(JwtAuthGuard)
   @Post('logout')
   async logout(@Req() req: Request) {
@@ -382,12 +499,16 @@ export class AuthController {
     }
   }
 
+  @ApiOperation({ summary: 'Start Google OAuth login flow' })
+  @ApiOkResponse({ description: 'Redirects to Google OAuth consent page.' })
   @Get('google')
   @UseGuards(AuthGuard('google'))
   async googleLogin(): Promise<any> {
     return HttpStatus.OK;
   }
 
+  @ApiOperation({ summary: 'Google OAuth callback endpoint' })
+  @ApiOkResponse({ description: 'Google OAuth callback processed successfully.' })
   @Get('google/redirect')
   @UseGuards(AuthGuard('google'))
   async googleLoginRedirect(@Req() req: Request): Promise<any> {
@@ -399,7 +520,23 @@ export class AuthController {
 
   // update user
   @ApiOperation({ summary: 'Update user' })
-  @ApiBearerAuth()
+  @ApiBearerAuth(USER_TYPES.CLIENT)
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    schema: {
+      allOf: [
+        { $ref: getSchemaPath(UpdateUserDto) },
+        {
+          type: 'object',
+          properties: {
+            image: { type: 'string', format: 'binary' },
+          },
+        },
+      ],
+    },
+  })
+  @ApiOkResponse({ description: 'User profile updated successfully.' })
+  @ApiUnauthorizedResponse({ description: 'Missing or invalid JWT token.' })
   @UseGuards(JwtAuthGuard)
   @Patch('update')
   @UseInterceptors(
@@ -441,7 +578,18 @@ export class AuthController {
 
   // -------change email address------
   @ApiOperation({ summary: 'request email change' })
-  @ApiBearerAuth()
+  @ApiBearerAuth(USER_TYPES.CLIENT)
+  @ApiBody({
+    schema: {
+      type: 'object',
+      required: ['email'],
+      properties: {
+        email: { type: 'string', example: 'new@example.com' },
+      },
+    },
+  })
+  @ApiOkResponse({ description: 'Email change request sent successfully.' })
+  @ApiUnauthorizedResponse({ description: 'Missing or invalid JWT token.' })
   @UseGuards(JwtAuthGuard)
   @Post('request-email-change')
   async requestEmailChange(
@@ -464,7 +612,19 @@ export class AuthController {
   }
 
   @ApiOperation({ summary: 'Change email address' })
-  @ApiBearerAuth()
+  @ApiBearerAuth(USER_TYPES.CLIENT)
+  @ApiBody({
+    schema: {
+      type: 'object',
+      required: ['email', 'token'],
+      properties: {
+        email: { type: 'string', example: 'new@example.com' },
+        token: { type: 'string', example: '123456' },
+      },
+    },
+  })
+  @ApiOkResponse({ description: 'Email changed successfully.' })
+  @ApiUnauthorizedResponse({ description: 'Missing or invalid JWT token.' })
   @UseGuards(JwtAuthGuard)
   @Post('change-email')
   async changeEmail(
@@ -498,7 +658,9 @@ export class AuthController {
 
   // --------- 2FA ---------
   @ApiOperation({ summary: 'Generate 2FA secret' })
-  @ApiBearerAuth()
+  @ApiBearerAuth(USER_TYPES.CLIENT)
+  @ApiOkResponse({ description: '2FA secret generated successfully.' })
+  @ApiUnauthorizedResponse({ description: 'Missing or invalid JWT token.' })
   @UseGuards(JwtAuthGuard)
   @Post('generate-2fa-secret')
   async generate2FASecret(@Req() req: Request) {
@@ -514,7 +676,18 @@ export class AuthController {
   }
 
   @ApiOperation({ summary: 'Verify 2FA' })
-  @ApiBearerAuth()
+  @ApiBearerAuth(USER_TYPES.CLIENT)
+  @ApiBody({
+    schema: {
+      type: 'object',
+      required: ['token'],
+      properties: {
+        token: { type: 'string', example: '123456' },
+      },
+    },
+  })
+  @ApiOkResponse({ description: '2FA token verified successfully.' })
+  @ApiUnauthorizedResponse({ description: 'Missing or invalid JWT token.' })
   @UseGuards(JwtAuthGuard)
   @Post('verify-2fa')
   async verify2FA(@Req() req: Request, @Body() data: { token: string }) {
@@ -531,7 +704,9 @@ export class AuthController {
   }
 
   @ApiOperation({ summary: 'Enable 2FA' })
-  @ApiBearerAuth()
+  @ApiBearerAuth(USER_TYPES.CLIENT)
+  @ApiOkResponse({ description: '2FA enabled successfully.' })
+  @ApiUnauthorizedResponse({ description: 'Missing or invalid JWT token.' })
   @UseGuards(JwtAuthGuard)
   @Post('enable-2fa')
   async enable2FA(@Req() req: Request) {
@@ -547,7 +722,9 @@ export class AuthController {
   }
 
   @ApiOperation({ summary: 'Disable 2FA' })
-  @ApiBearerAuth()
+  @ApiBearerAuth(USER_TYPES.CLIENT)
+  @ApiOkResponse({ description: '2FA disabled successfully.' })
+  @ApiUnauthorizedResponse({ description: 'Missing or invalid JWT token.' })
   @UseGuards(JwtAuthGuard)
   @Post('disable-2fa')
   async disable2FA(@Req() req: Request) {

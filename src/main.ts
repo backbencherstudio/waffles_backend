@@ -2,7 +2,6 @@
 import { ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { NestExpressApplication } from '@nestjs/platform-express';
-import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import * as express from 'express';
 import helmet from 'helmet';
 import { join, resolve } from 'path';
@@ -11,6 +10,7 @@ import { IoAdapter } from '@nestjs/platform-socket.io';
 import { AppModule } from './app.module';
 import { CustomExceptionFilter } from './common/exception/custom-exception.filter';
 import { SojebStorage } from './common/lib/Disk/SojebStorage';
+import { setupSwagger } from './common/swagger/swagger-auth';
 import appConfig from './config/app.config';
 
 async function bootstrap() {
@@ -19,12 +19,12 @@ async function bootstrap() {
   });
 
   // Handle raw body for webhooks
-  // app.use('/payment/stripe/webhook', express.raw({ type: 'application/json' }));
   app.useWebSocketAdapter(new IoAdapter(app));
   app.setGlobalPrefix('api');
+  
   //app.enableCors();
   app.enableCors({
-    origin: true, // Add your frontend URL
+    origin: true, 
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
     credentials: true,
     allowedHeaders: [
@@ -39,14 +39,7 @@ async function bootstrap() {
       crossOriginResourcePolicy: false,
     }),
   );
-  // Enable it, if special charactrers not encoding perfectly
-  // app.use((req, res, next) => {
-  //   // Only force content-type for specific API routes, not Swagger or assets
-  //   if (req.path.startsWith('/api') && !req.path.startsWith('/api/docs')) {
-  //     res.setHeader('Content-Type', 'application/json; charset=utf-8');
-  //   }
-  //   next();
-  // });
+ 
 
   app.use('/public', express.static(resolve('./public')));
   console.log('Serving static from:', join(__dirname, '..', 'public'));
@@ -91,18 +84,9 @@ async function bootstrap() {
       minio: true,
     },
   });
-
-  // swagger
-  const options = new DocumentBuilder()
-    .setTitle(`${process.env.APP_NAME} api`)
-    .setDescription(`${process.env.APP_NAME} api docs`)
-    .setVersion('1.0')
-    .addTag(`${process.env.APP_NAME}`)
-    .addBearerAuth()
-    .build();
-  const document = SwaggerModule.createDocument(app, options);
-  SwaggerModule.setup('api/docs', app, document);
-  // end swaggers
+ 
+  // swagger setup
+  setupSwagger(app);
 
   await app.listen(process.env.PORT ?? 4000, '0.0.0.0');
 }

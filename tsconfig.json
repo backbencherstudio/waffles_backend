@@ -10,8 +10,13 @@
     "sourceMap": true,
     "outDir": "./dist",
     "baseUrl": "./",
+    "paths": {
+      "prisma/generated": ["prisma/generated/client"],
+      "prisma/generated/*": ["prisma/generated/*"]
+    },
     "incremental": true,
     "skipLibCheck": true,
+    "useUnknownInCatchVariables": false,
     "strictNullChecks": false,
     "noImplicitAny": false,
     "strictBindCallApply": false,

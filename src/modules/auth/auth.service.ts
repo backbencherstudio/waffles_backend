@@ -169,7 +169,6 @@ export class AuthService {
 
       const payload = { email: email, sub: userId, type: user?.type };
 
-
       const accessToken = this.jwtService.sign(payload, { expiresIn: '1h' });
       const refreshToken = this.jwtService.sign(payload, { expiresIn: '7d' });
 
@@ -199,7 +198,6 @@ export class AuthService {
     }
   }
 
-
   // get all clients
   async getAllClients() {
     try {
@@ -213,7 +211,6 @@ export class AuthService {
     }
   }
 
-
   // get all editors
   async getAllEditors() {
     try {
@@ -226,9 +223,6 @@ export class AuthService {
       };
     }
   }
-
-
-
 
   // done
   async forgotPassword(email) {

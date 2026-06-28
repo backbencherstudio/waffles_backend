@@ -49,6 +49,7 @@ export class ProfileController {
     return await this.profileService.getFullProfile(userId);
   }
 
+
   // *profile info update 
   @Patch('profile-info')
   @UseInterceptors(
@@ -65,6 +66,8 @@ export class ProfileController {
     const userId = req.user.userId;
     return await this.profileService.updateBasicProfile(userId, createProfileDto, avatar);
   }
+
+
 
   //  * update  about me section
   @Patch('about-me')
