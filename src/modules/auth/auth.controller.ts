@@ -42,6 +42,7 @@ import { USER_TYPES } from 'src/common/swagger/swagger-auth';
 export class AuthController {
   constructor(private authService: AuthService) {}
 
+  
   // *get user details
   @ApiOperation({ summary: 'Get user details' })
   @ApiBearerAuth(USER_TYPES.CLIENT)
