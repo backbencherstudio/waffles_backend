@@ -1,10 +1,21 @@
 // external imports
 import { Command, CommandRunner } from 'nest-commander';
+import * as bcrypt from 'bcrypt';
+import * as fs from 'fs';
 // internal imports
 import appConfig from '../config/app.config';
 import { StringHelper } from '../common/helper/string.helper';
 import { UserRepository } from '../common/repository/user/user.repository';
 import { PrismaService } from '../prisma/prisma.service';
+import {
+  ContentLength,
+  JobCategory,
+  Platform,
+  JobStatus,
+  VideoCategory,
+  SoftwarePreference,
+  UserType,
+} from 'prisma/generated';
 
 @Command({ name: 'seed', description: 'prisma db seed' })
 export class SeedCommand extends CommandRunner {
@@ -17,20 +28,271 @@ export class SeedCommand extends CommandRunner {
 
   async seed(param: string[]) {
     try {
-      console.log(`Prisma Env: ${process.env.PRISMA_ENV}`);
-      console.log('Seeding started...');
+      fs.writeFileSync('seeding.log', `Prisma Env: ${process.env.PRISMA_ENV}\n`, { flag: 'a' });
+      fs.writeFileSync('seeding.log', 'Seeding started...\n', { flag: 'a' });
 
-      // begin transaaction
+      // begin transaction
       await this.prisma.$transaction(async ($tx) => {
-        await this.roleSeed();
-        await this.permissionSeed();
-        await this.userSeed();
-        await this.permissionRoleSeed();
+        // Only run static seeds if they aren't already there
+        const rolesCount = await this.prisma.role.count();
+        if (rolesCount === 0) {
+          fs.writeFileSync('seeding.log', 'Seeding roles...\n', { flag: 'a' });
+          await this.roleSeed();
+        }
+        const permCount = await this.prisma.permission.count();
+        if (permCount === 0) {
+          fs.writeFileSync('seeding.log', 'Seeding permissions...\n', { flag: 'a' });
+          await this.permissionSeed();
+        }
+        // check system admin user
+        const systemAdminEmail = appConfig().defaultUser.system.email;
+        const existAdmin = await this.prisma.user.findUnique({
+          where: { email: systemAdminEmail },
+        });
+        if (!existAdmin) {
+          fs.writeFileSync('seeding.log', 'Seeding system admin...\n', { flag: 'a' });
+          await this.userSeed();
+        }
+        const permRoleCount = await this.prisma.permissionRole.count();
+        if (permRoleCount === 0) {
+          fs.writeFileSync('seeding.log', 'Seeding permission roles...\n', { flag: 'a' });
+          await this.permissionRoleSeed();
+        }
+
+        // Clean and Seed Clients, Editors, Jobs, and Hires
+        fs.writeFileSync('seeding.log', 'Cleaning old seed data...\n', { flag: 'a' });
+        await this.cleanSeedData();
+        fs.writeFileSync('seeding.log', 'Seeding clients and editors...\n', { flag: 'a' });
+        const { clients, editors } = await this.clientEditorSeed();
+        fs.writeFileSync('seeding.log', 'Seeding jobs...\n', { flag: 'a' });
+        await this.jobSeed(clients);
+        fs.writeFileSync('seeding.log', 'Seeding hires...\n', { flag: 'a' });
+        await this.hireSeed(clients, editors);
       });
 
-      console.log('Seeding done.');
+      fs.writeFileSync('seeding.log', 'Seeding done successfully.\n', { flag: 'a' });
     } catch (error) {
+      fs.writeFileSync('seeding.log', `Seeding error: ${error.stack || error}\n`, { flag: 'a' });
       throw error;
+    }
+  }
+
+  async cleanSeedData() {
+    console.log('Cleaning up old seeded data...');
+    const seededEmails = [
+      ...Array.from({ length: 10 }, (_, i) => `client${i + 1}@waffles.com`),
+      ...Array.from({ length: 10 }, (_, i) => `editor${i + 1}@waffles.com`),
+    ];
+
+    const seededUsers = await this.prisma.user.findMany({
+      where: {
+        email: {
+          in: seededEmails,
+        },
+      },
+      select: { id: true },
+    });
+    const seededUserIds = seededUsers.map((u) => u.id);
+
+    if (seededUserIds.length > 0) {
+      // Delete attachments linked to hires, reviews, and deliveries of our users
+      await this.prisma.attachment.deleteMany({
+        where: {
+          OR: [
+            { hire: { user_id: { in: seededUserIds } } },
+            { hire: { hire_profile_id: { in: seededUserIds } } },
+            { review: { user_id: { in: seededUserIds } } },
+            { review: { service_provider_id: { in: seededUserIds } } },
+            { delivery: { user_id: { in: seededUserIds } } },
+          ],
+        },
+      });
+
+      await this.prisma.notification.deleteMany({
+        where: {
+          OR: [
+            { sender_id: { in: seededUserIds } },
+            { receiver_id: { in: seededUserIds } },
+          ],
+        },
+      });
+
+      await this.prisma.userPaymentMethod.deleteMany({
+        where: { user_id: { in: seededUserIds } },
+      });
+
+      await this.prisma.paymentTransaction.deleteMany({
+        where: { user_id: { in: seededUserIds } },
+      });
+
+      await this.prisma.userSetting.deleteMany({
+        where: { user_id: { in: seededUserIds } },
+      });
+
+      await this.prisma.ucode.deleteMany({
+        where: { user_id: { in: seededUserIds } },
+      });
+
+      await this.prisma.review.deleteMany({
+        where: {
+          OR: [
+            { user_id: { in: seededUserIds } },
+            { service_provider_id: { in: seededUserIds } },
+          ],
+        },
+      });
+
+      await this.prisma.delivery.deleteMany({
+        where: {
+          user_id: { in: seededUserIds },
+        },
+      });
+
+      await this.prisma.extensionRequest.deleteMany({
+        where: {
+          user_id: { in: seededUserIds },
+        },
+      });
+
+      await this.prisma.bid.deleteMany({
+        where: {
+          user_id: { in: seededUserIds },
+        },
+      });
+
+      await this.prisma.hire.deleteMany({
+        where: {
+          OR: [
+            { user_id: { in: seededUserIds } },
+            { hire_profile_id: { in: seededUserIds } },
+          ],
+        },
+      });
+
+      await this.prisma.jOB.deleteMany({
+        where: {
+          user_id: { in: seededUserIds },
+        },
+      });
+
+      await this.prisma.roleUser.deleteMany({
+        where: {
+          user_id: { in: seededUserIds },
+        },
+      });
+
+      await this.prisma.user.deleteMany({
+        where: {
+          id: { in: seededUserIds },
+        },
+      });
+    }
+  }
+
+  async clientEditorSeed() {
+    console.log('Seeding 10 client users and 10 editor users...');
+    const passwordHash = await bcrypt.hash('password123', appConfig().security.salt);
+    const clients = [];
+    const editors = [];
+
+    // Create 10 Client users
+    for (let i = 1; i <= 10; i++) {
+      const client = await this.prisma.user.create({
+        data: {
+          username: `client${i}`,
+          email: `client${i}@waffles.com`,
+          password: passwordHash,
+          type: UserType.CLIENT,
+          first_name: 'Client',
+          last_name: String(i),
+          name: `Client ${i}`,
+          status: 1,
+          approved_at: new Date(),
+        },
+      });
+      clients.push(client);
+    }
+
+    // Create 10 Editor users
+    for (let i = 1; i <= 10; i++) {
+      const editor = await this.prisma.user.create({
+        data: {
+          username: `editor${i}`,
+          email: `editor${i}@waffles.com`,
+          password: passwordHash,
+          type: UserType.EDITOR,
+          first_name: 'Editor',
+          last_name: String(i),
+          name: `Editor ${i}`,
+          status: 1,
+          approved_at: new Date(),
+        },
+      });
+      editors.push(editor);
+    }
+
+    return { clients, editors };
+  }
+
+  async jobSeed(clients: any[]) {
+    console.log('Seeding 10 jobs...');
+    const contentLengths = Object.values(ContentLength);
+    const jobCategories = Object.values(JobCategory);
+    const platforms = Object.values(Platform);
+
+    for (let i = 1; i <= 10; i++) {
+      const client = clients[(i - 1) % clients.length];
+      const contentLength = contentLengths[(i - 1) % contentLengths.length];
+      const jobCategory = jobCategories[(i - 1) % jobCategories.length];
+      const platform = platforms[(i - 1) % platforms.length];
+
+      await this.prisma.jOB.create({
+        data: {
+          job_title: `Professional Video Editor Needed for ${platform} - Project ${i}`,
+          job_description: `We are looking for an experienced video editor to work on a ${jobCategory.toLowerCase().replace(/_/g, ' ')} project. The content length will be around ${contentLength}. Need professional coloring and sound design.`,
+          content_length: contentLength,
+          project_budget: parseFloat((100 + i * 50).toFixed(2)),
+          job_category: jobCategory,
+          project_duration: parseFloat((3 + i).toFixed(1)),
+          platform: platform,
+          status: JobStatus.PENDING,
+          user_id: client.id,
+        },
+      });
+    }
+  }
+
+  async hireSeed(clients: any[], editors: any[]) {
+    console.log('Seeding 10 hires...');
+    const videoCategories = Object.values(VideoCategory);
+    const contentLengths = Object.values(ContentLength);
+    const softwarePreferences = Object.values(SoftwarePreference);
+
+    for (let i = 1; i <= 10; i++) {
+      const client = clients[(i - 1) % clients.length];
+      const editor = editors[(i - 1) % editors.length];
+      const videoCategory = videoCategories[(i - 1) % videoCategories.length];
+      const contentLength = contentLengths[(i - 1) % contentLengths.length];
+      const softwarePref = [
+        softwarePreferences[(i - 1) % softwarePreferences.length],
+        softwarePreferences[i % softwarePreferences.length],
+      ];
+
+      await this.prisma.hire.create({
+        data: {
+          project_title: `Video Editing for Client ${client.username} by Editor ${editor.username}`,
+          video_category: videoCategory,
+          video_duration: contentLength,
+          description: `This is a direct hire project. The editor ${editor.name} will edit a ${videoCategory.toLowerCase().replace(/_/g, ' ')} video of length ${contentLength}.`,
+          project_budget: parseFloat((200 + i * 75).toFixed(2)),
+          project_duration: parseFloat((5 + i).toFixed(1)),
+          total_amount: parseFloat((200 + i * 75).toFixed(2)),
+          hire_profile_id: editor.id,
+          user_id: client.id,
+          status: JobStatus.PENDING,
+          software_preference: softwarePref,
+        },
+      });
     }
   }
 
