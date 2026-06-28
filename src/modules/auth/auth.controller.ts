@@ -42,11 +42,12 @@ import { USER_TYPES } from 'src/common/swagger/swagger-auth';
 export class AuthController {
   constructor(private authService: AuthService) {}
 
-  
   // *get user details
   @ApiOperation({ summary: 'Get user details' })
   @ApiBearerAuth(USER_TYPES.CLIENT)
-  @ApiOkResponse({ description: 'Authenticated user profile returned successfully.' })
+  @ApiOkResponse({
+    description: 'Authenticated user profile returned successfully.',
+  })
   @ApiUnauthorizedResponse({ description: 'Missing or invalid JWT token.' })
   @UseGuards(JwtAuthGuard)
   @Get('me')
@@ -147,18 +148,52 @@ export class AuthController {
   }
 
   // *login user
-  @ApiOperation({ summary: 'Login user' })
+  @ApiOperation({
+    summary: 'Unified Login',
+    description: `Authenticate a user. All users login through this endpoint.
+
+**User Types vs Assignable Roles:**
+- \`user_type\` determines system-level access (SUPER_ADMIN, ADMIN, CHURCH_ADMIN, PRO_USER, USER)
+- Assignable roles (CHURCH_LEADER, PASTOR, HELPER, etc.) provide church-specific permissions
+
+**Test Credentials by User Type:**
+
+| User Type | Email | Password |
+|-----------|-------|----------|
+| Admin | admin@gmail.com  | 12345678 |
+| Client | client@gmail.com | 12345678 |
+| Editor | editor@gmail.com | 12345678 |`,
+  })
   @ApiBody({
     schema: {
       type: 'object',
       required: ['email', 'password'],
       properties: {
-        email: { type: 'string', example: 'john@example.com' },
-        password: { type: 'string', example: 'password123' },
+        email: { type: 'string', example: 'editor@gmail.com' },
+        password: { type: 'string', example: '12345678' },
+      },
+    },
+    examples: {
+      client: {
+        summary: 'Client Login',
+        description: 'User type: CLIENT',
+        value: { email: 'client@gmail.com', password: '12345678' },
+      },
+      editor: {
+        summary: 'Editor Login',
+        description: 'User type: EDITOR',
+        value: { email: 'editor@gmail.com', password: '12345678' },
+      },
+      church_admin_grace: {
+        summary: 'Admin Login',
+        description: 'User type: ADMIN',
+        value: { email: 'admin@gmail.com', password: '12345678' },
       },
     },
   })
-  @ApiOkResponse({ description: 'Login successful. Access and refresh token returned.' })
+  @ApiOkResponse({
+    description: 'Login successful. Access and refresh token returned.',
+  })
   @ApiUnauthorizedResponse({ description: 'Invalid credentials.' })
   @UseGuards(LocalAuthGuard)
   @Post('login')
@@ -288,7 +323,9 @@ export class AuthController {
     },
   })
   @ApiOkResponse({ description: 'Password reset successful.' })
-  @ApiBadRequestResponse({ description: 'Invalid email/token/password payload.' })
+  @ApiBadRequestResponse({
+    description: 'Invalid email/token/password payload.',
+  })
   @Post('reset-password')
   async resetPassword(
     @Body() data: { email: string; token: string; password: string },
@@ -509,7 +546,9 @@ export class AuthController {
   }
 
   @ApiOperation({ summary: 'Google OAuth callback endpoint' })
-  @ApiOkResponse({ description: 'Google OAuth callback processed successfully.' })
+  @ApiOkResponse({
+    description: 'Google OAuth callback processed successfully.',
+  })
   @Get('google/redirect')
   @UseGuards(AuthGuard('google'))
   async googleLoginRedirect(@Req() req: Request): Promise<any> {
