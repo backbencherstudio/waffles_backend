@@ -11,7 +11,7 @@ datasource db {
  * ----------------------------------------------------
  * User & Auth & Portfolio Schema
  * -----------------------------------------------------
- */
+ **/
 
 model Account {
   id         String   @id @default(cuid())

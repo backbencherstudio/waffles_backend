@@ -27,8 +27,8 @@ export class JobsController {
   @Post()
   @UseInterceptors(
     FileFieldsInterceptor([
-      { name: 'attachment', maxCount: 10 }, 
-      { name: 'job_photo', maxCount: 1 }, 
+      { name: 'attachment', maxCount: 10 },
+      { name: 'job_photo', maxCount: 1 },
     ]),
   )
   async createJob(
@@ -52,7 +52,6 @@ export class JobsController {
 
     return this.jobsService.createJob(userId, dto, attachments, jobPhoto);
   }
-
 
   @Get('allJobsByUser')
   getAllJobs(
