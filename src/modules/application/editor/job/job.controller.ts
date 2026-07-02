@@ -8,6 +8,7 @@ import {
   Delete,
   UseGuards,
   Query,
+  Req,
 } from '@nestjs/common';
 import { JobService } from './job.service';
 import { CreateJobDto } from './dto/create-job.dto';
@@ -87,8 +88,12 @@ export class JobController {
       },
     },
   })
-  async findAll(@Query() paginationDto: PaginationDto) {
-    return this.jobService.findAll(paginationDto);
+  async findAll(
+    @Query() paginationDto: PaginationDto,
+    @Req() req: any
+  ) {
+    const userId = req.user.userId;
+    return this.jobService.findAll( paginationDto,userId,);
   }
 
   /*--------------------------------------------------
@@ -154,79 +159,8 @@ export class JobController {
 
 
 
-  // job deatils
-  @Get(':id')
-  @ApiOperation({
-    summary: 'Get job details',
-    description:
-      'Returns full details for a single job including owner info, bids, image URL, and countdown data.',
-  })
-  @ApiOkResponse({
-    description: 'Successfully retrieved job details',
-    schema: {
-      example: {
-        success: true,
-        message: 'Job fetched successfully',
-        data: {
-          id: 'job-id-123',
-          created_at: '2026-06-30T09:00:00.000Z',
-          job_title:
-            'I will do SEO backlinks with blogger outreach for high quality link building',
-          job_description:
-            'Create quality backlinks and outreach links for better ranking.',
-          total_payment: 150,
-          project_duration: 5,
-          status: 'PENDING',
-          deadline: '2026-07-05T09:00:00.000Z',
-          skill: 'SEO, Backlink Outreach',
-          job_photo: 'job-photo.jpg',
-          job_photo_url:
-            'https://cdn.example.com/storage/job-photo/job-photo.jpg',
-          user_skill: 'SEO Specialist',
-          user: {
-            id: 'user-id-456',
-            first_name: 'Marvin',
-            location: 'Pakistan',
-            avatar: 'https://cdn.example.com/storage/avatar/avatar.jpg',
-            created_at: '2026-06-25T09:00:00.000Z',
-          },
-          bids: [],
-          countdown: {
-            remaining_ms: null,
-            is_late: false,
-            deadline: '2026-07-05T09:00:00.000Z',
-          },
-        },
-      },
-    },
-  })
-  async findOne(@Param('id') id: string) {
-    return this.jobService.findOne(id);
-  }
 
 
-  // browse jobs with bid
-  // @Get('browse-jobs-with-bid')
-  // @ApiOperation({
-  //   summary: 'Browse pending jobs with bids',
-  //   description:
-  //     'Returns the paginated browse list of all pending jobs with bids for the editor dashboard.',
-  // })
-  // @ApiQuery({
-  //   name: 'page',
-  //   required: false,
-  //   example: 1,
-  //   description: 'Page number',
-  // })
-  // @ApiQuery({
-  //   name: 'limit',
-  //   required: false,
-  //   example: 10,
-  //   description: 'Items per page',
-  // })
-  // async browseJobsWithBid(
-  //   @Query() paginationDto: PaginationDto
-  // ) {
-  //   return this.jobService.browseJobsWithBid(paginationDto);
-  // }
+
+  
 }
