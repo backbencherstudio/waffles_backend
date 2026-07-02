@@ -42,7 +42,7 @@ import { USER_TYPES } from 'src/common/swagger/swagger-auth';
 export class AuthController {
   constructor(private authService: AuthService) {}
 
-  // *get user details
+  // get user details
   @ApiOperation({ summary: 'Get user details' })
   @ApiBearerAuth(USER_TYPES.CLIENT)
   @ApiOkResponse({
@@ -66,7 +66,7 @@ export class AuthController {
     }
   }
 
-  // *register user
+  // register user
   @ApiOperation({ summary: 'Register a user' })
   @ApiBody({ type: CreateUserDto })
   @ApiOkResponse({ description: 'User registered successfully.' })
@@ -147,22 +147,21 @@ export class AuthController {
     }
   }
 
-  // *login user
+
+  // login user
   @ApiOperation({
     summary: 'Unified Login',
     description: `Authenticate a user. All users login through this endpoint.
+    **User Types vs Assignable Roles:**
+    - \`user_type\` determines system-level access (ADMIN,CLIENT,EDITOR, USER)
+    
+    **Test Credentials by User Type:**
 
-**User Types vs Assignable Roles:**
-- \`user_type\` determines system-level access (SUPER_ADMIN, ADMIN, CHURCH_ADMIN, PRO_USER, USER)
-- Assignable roles (CHURCH_LEADER, PASTOR, HELPER, etc.) provide church-specific permissions
-
-**Test Credentials by User Type:**
-
-| User Type | Email | Password |
-|-----------|-------|----------|
-| Admin | admin@gmail.com  | 12345678 |
-| Client | client@gmail.com | 12345678 |
-| Editor | editor@gmail.com | 12345678 |`,
+    | User Type | Email | Password |
+    |-----------|-------|----------|
+    | Admin | admin@gmail.com  | password123 |
+    | Client | client@gmail.com | password123 |
+    | Editor | editor@gmail.com | password123 |`,
   })
   @ApiBody({
     schema: {
@@ -170,24 +169,24 @@ export class AuthController {
       required: ['email', 'password'],
       properties: {
         email: { type: 'string', example: 'editor@gmail.com' },
-        password: { type: 'string', example: '12345678' },
+        password: { type: 'string', example: 'password123' },
       },
     },
     examples: {
       client: {
         summary: 'Client Login',
         description: 'User type: CLIENT',
-        value: { email: 'client@gmail.com', password: '12345678' },
+        value: { email: 'client@waffles.com', password: 'password123' },
       },
       editor: {
         summary: 'Editor Login',
         description: 'User type: EDITOR',
-        value: { email: 'editor@gmail.com', password: '12345678' },
+        value: { email: 'editor@waffles.com', password: 'password123' },
       },
-      church_admin_grace: {
+      admin: {
         summary: 'Admin Login',
         description: 'User type: ADMIN',
-        value: { email: 'admin@gmail.com', password: '12345678' },
+        value: { email: 'admin@waffles.com', password: 'password123' },
       },
     },
   })
@@ -223,7 +222,8 @@ export class AuthController {
     }
   }
 
-  // *forgot password
+
+  // forgot password
   @ApiOperation({ summary: 'Forgot password' })
   @ApiBody({
     schema: {
@@ -252,7 +252,8 @@ export class AuthController {
     }
   }
 
-  // *verify email
+  
+  // verify email
   @ApiOperation({ summary: 'Verify email' })
   @ApiBody({ type: VerifyEmailDto })
   @ApiOkResponse({ description: 'Email verification successful.' })
@@ -280,7 +281,8 @@ export class AuthController {
     }
   }
 
-  // *resend verification email to verify the email
+
+  // resend verification email to verify the email
   @ApiOperation({ summary: 'Resend verification email' })
   @ApiBody({
     schema: {
@@ -309,7 +311,8 @@ export class AuthController {
     }
   }
 
-  // *reset password if user forget the password
+
+  // reset password if user forget the password
   @ApiOperation({ summary: 'Reset password' })
   @ApiBody({
     schema: {
@@ -359,7 +362,7 @@ export class AuthController {
     }
   }
 
-  // *resend token
+  // resend token
   @ApiOperation({ summary: 'Resend reset password token' })
   @ApiBody({
     schema: {
@@ -388,7 +391,7 @@ export class AuthController {
     }
   }
 
-  // *veify token
+  // veify token
   @ApiOperation({ summary: 'Verify reset password token' })
   @ApiBody({
     schema: {
