@@ -1,19 +1,20 @@
-import { Injectable } from '@nestjs/common';
-import appConfig from 'src/config/app.config';
-import { SojebStorage } from 'src/common/lib/Disk/SojebStorage';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { PaginationDto } from 'src/common/pagination/pagination.dto';
 import * as natural from 'natural';
 import { JobStatus } from 'src/common/enums/job.enum';
 import { calculateSkillMatch } from 'src/common/utils/skill-matcher.util';
+import { ImageGetUtil } from 'src/common/utils/image/image.util';
 
 @Injectable()
 export class JobService {
   constructor(private readonly prisma: PrismaService) {}
 
-  //get all jobs pending job
-   async findAll(paginationDto: PaginationDto, editorId: string) {
-   
+  /*-------------------------------------------------------
+                  get all jobs pending job
+  -------------------------------------------------------*/
+
+  async quickMatch(paginationDto: PaginationDto, editorId: string) {
     const page = paginationDto?.page ?? 1;
     const limit = paginationDto?.limit ?? 10;
     const skip = (page - 1) * limit;
@@ -24,7 +25,7 @@ export class JobService {
     });
 
     const editorSkills = (editor?.skills ?? []).map((s) =>
-      s.skill_name.toLowerCase().trim()
+      s.skill_name.toLowerCase().trim(),
     );
 
     const jobs = await this.prisma.jOB.findMany({
@@ -44,7 +45,10 @@ export class JobService {
         user: {
           select: {
             id: true,
+            created_at: true,
             first_name: true,
+            avatar: true,
+            last_name: true,
             location: true,
             skills: { select: { skill_name: true } },
           },
@@ -54,25 +58,23 @@ export class JobService {
 
     const formattedAndMatchedJobs = jobs.map((job) => ({
       id: job.id,
-      created_at: job.created_at,
       job_title: job.job_title,
-      job_description: job.job_description,
+      job_photo: job.job_photo,
+      job_photo_url: ImageGetUtil.jobPhotoUrl(job.job_photo),
+      user_name: `${job.user?.first_name ?? null} ${job.user?.last_name ?? null}`,
+      user_photo: job.user?.avatar,
+      user_photo_url: ImageGetUtil.avatarUrl(job.user?.avatar),
+      skill: job.skill,
+      exprience: job.user.created_at,
+      location: job.user.location,
       total_payment: job.total_payment,
       project_duration: job.project_duration,
-      status: job.status,
-      deadline: job.deadline,
-      job_photo: job.job_photo,
-      job_photo_url: job.job_photo
-        ? SojebStorage.url(appConfig().storageUrl.jobPhoto + '/' + job.job_photo)
-        : null,
-      skill: job.skill,
-      user_name: job.user?.first_name ?? null,
-      user_location: job.user?.location ?? null,
-      user_skill: job.user?.skills?.[0]?.skill_name ?? null,
       match_percentage: calculateSkillMatch(job.skill, editorSkills),
     }));
 
-    formattedAndMatchedJobs.sort((a, b) => b.match_percentage - a.match_percentage);
+    formattedAndMatchedJobs.sort(
+      (a, b) => b.match_percentage - a.match_percentage,
+    );
 
     const total = formattedAndMatchedJobs.length;
     const paginatedData = formattedAndMatchedJobs.slice(skip, skip + limit);
@@ -90,15 +92,17 @@ export class JobService {
     };
   }
 
-  // browse jobs
+  /*-------------------------------------------------------
+                  browse jobs pending job
+  -------------------------------------------------------*/
+
   async browseJobs(paginationDto: PaginationDto) {
     const page = paginationDto?.page ?? 1;
     const limit = paginationDto?.limit ?? 10;
     const skip = (page - 1) * limit;
 
     const where = {
-      deleted_at: null,
-      status: 'PENDING' as const,
+      status: JobStatus.PENDING,
     };
 
     const [total, jobs] = await this.prisma.$transaction([
@@ -113,11 +117,9 @@ export class JobService {
         select: {
           id: true,
           job_title: true,
-          job_description: true,
           total_payment: true,
           project_duration: true,
           status: true,
-          created_at: true,
           skill: true,
           deadline: true,
           job_photo: true,
@@ -125,13 +127,10 @@ export class JobService {
             select: {
               id: true,
               first_name: true,
+              last_name: true,
+              avatar: true,
               location: true,
               created_at: true,
-              skills: {
-                select: {
-                  skill_name: true,
-                },
-              },
             },
           },
         },
@@ -141,21 +140,20 @@ export class JobService {
     const formatData = jobs.map((job) => {
       return {
         id: job.id,
-        created_at: job.created_at,
         job_title: job.job_title,
+        total_payment: job.total_payment,
         project_duration: job.project_duration,
-        status: job.status,
         deadline: job.deadline,
+        status: job.status,
         job_photo: job.job_photo,
-        job_photo_url: job.job_photo
-          ? SojebStorage.url(
-              appConfig().storageUrl.jobPhoto + '/' + job.job_photo,
-            )
-          : null,
+        job_photo_url: ImageGetUtil.jobPhoto(job.job_photo),
         skill: job.skill,
         user_name: job.user?.first_name ?? null,
         user_location: job.user?.location ?? null,
-        user_skill: job.user?.skills?.[0]?.skill_name ?? null,
+        user_photo: job.user?.avatar ?? null,
+        user_photo_url: ImageGetUtil.avatar(job.user?.avatar),
+        reviews_avarage: 0,
+        reviews_count: 0,
       };
     });
 
@@ -171,6 +169,4 @@ export class JobService {
       data: formatData,
     };
   }
-
- 
 }

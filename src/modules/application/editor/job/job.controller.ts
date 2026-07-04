@@ -33,7 +33,7 @@ export class JobController {
 
   /*--------------------------------------------------
               get quick match result
-  --------------------------------------------------*/            
+  --------------------------------------------------*/
   @Get('quick-match')
   @ApiOperation({
     summary: 'Get quick match pending jobs',
@@ -88,17 +88,14 @@ export class JobController {
       },
     },
   })
-  async findAll(
-    @Query() paginationDto: PaginationDto,
-    @Req() req: any
-  ) {
+  async quickMatch(@Query() paginationDto: PaginationDto, @Req() req: any) {
     const userId = req.user.userId;
-    return this.jobService.findAll( paginationDto,userId,);
+    return this.jobService.quickMatch(paginationDto, userId);
   }
 
   /*--------------------------------------------------
               browse jobs
-  --------------------------------------------------*/            
+  --------------------------------------------------*/
   @Get('browse-jobs')
   @ApiOperation({
     summary: 'Browse pending jobs',
@@ -157,10 +154,8 @@ export class JobController {
     return this.jobService.browseJobs(paginationDto);
   }
 
-
-
-
-
-
   
+
+
+
 }
