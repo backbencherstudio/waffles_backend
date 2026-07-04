@@ -1,7 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { PaginationDto } from 'src/common/pagination/pagination.dto';
-import * as natural from 'natural';
 import { JobStatus } from 'src/common/enums/job.enum';
 import { calculateSkillMatch } from 'src/common/utils/skill-matcher.util';
 import { ImageGetUtil } from 'src/common/utils/image/image.util';
@@ -49,7 +48,7 @@ export class JobService {
             first_name: true,
             avatar: true,
             last_name: true,
-            location: true,
+            country: true,
             skills: { select: { skill_name: true } },
           },
         },
@@ -61,12 +60,13 @@ export class JobService {
       job_title: job.job_title,
       job_photo: job.job_photo,
       job_photo_url: ImageGetUtil.jobPhotoUrl(job.job_photo),
-      user_name: `${job.user?.first_name ?? null} ${job.user?.last_name ?? null}`,
+      user_name:
+        `${job.user?.first_name ?? ''} ${job.user?.last_name ?? ''}`.trim(),
       user_photo: job.user?.avatar,
       user_photo_url: ImageGetUtil.avatarUrl(job.user?.avatar),
       skill: job.skill,
-      exprience: job.user.created_at,
-      location: job.user.location,
+      exprience: job.user?.created_at ?? null,
+      location: job.user?.country ?? null,
       total_payment: job.total_payment,
       project_duration: job.project_duration,
       match_percentage: calculateSkillMatch(job.skill, editorSkills),
@@ -129,7 +129,7 @@ export class JobService {
               first_name: true,
               last_name: true,
               avatar: true,
-              location: true,
+              country: true,
               created_at: true,
             },
           },
@@ -137,25 +137,23 @@ export class JobService {
       }),
     ]);
 
-    const formatData = jobs.map((job) => {
-      return {
-        id: job.id,
-        job_title: job.job_title,
-        total_payment: job.total_payment,
-        project_duration: job.project_duration,
-        deadline: job.deadline,
-        status: job.status,
-        job_photo: job.job_photo,
-        job_photo_url: ImageGetUtil.jobPhoto(job.job_photo),
-        skill: job.skill,
-        user_name: job.user?.first_name ?? null,
-        user_location: job.user?.location ?? null,
-        user_photo: job.user?.avatar ?? null,
-        user_photo_url: ImageGetUtil.avatar(job.user?.avatar),
-        reviews_avarage: 0,
-        reviews_count: 0,
-      };
-    });
+    const formatData = jobs.map((job) => ({
+      id: job.id,
+      job_title: job.job_title,
+      total_payment: job.total_payment,
+      project_duration: job.project_duration,
+      deadline: job.deadline,
+      status: job.status,
+      job_photo: job.job_photo,
+      job_photo_url: ImageGetUtil.jobPhoto(job.job_photo),
+      skill: job.skill,
+      user_name: job.user?.first_name ?? null,
+      user_location: job.user?.country ?? null,
+      user_photo: job.user?.avatar ?? null,
+      user_photo_url: ImageGetUtil.avatar(job.user?.avatar),
+      reviews_avarage: 0,
+      reviews_count: 0,
+    }));
 
     return {
       success: true,
@@ -169,4 +167,191 @@ export class JobService {
       data: formatData,
     };
   }
+
+  /*--------------------------------------------------
+              get job details
+  --------------------------------------------------*/
+
+  async getJobDetails(
+    jobId: string, 
+    paginationDto?: PaginationDto
+  ) {
+    const page = paginationDto?.page ?? 1;
+    const limit = paginationDto?.limit ?? 10;
+    const skip = (page - 1) * limit;
+
+    const job = await this.prisma.jOB.findUnique({
+      where: { id: jobId },
+      select: {
+        id: true,
+        job_title: true,
+        job_description: true,
+        job_photo: true,
+        job_category: true,
+        project_budget: true,
+        platform: true,
+        project_duration: true,
+        skill: true,
+
+        content_length: true,
+        reference: true,
+        total_payment: true,
+        status: true,
+        created_at: true,
+        updated_at: true,
+        deadline: true,
+        started_at: true,
+        user: {
+          select: {
+            id: true,
+            first_name: true,
+            last_name: true,
+            avatar: true,
+            language: true,
+            country: true,
+            created_at: true,
+            skills: {
+              select: {
+                skill_name: true,
+              },
+            },
+          },
+        },
+        bids: {
+          select: {
+            id: true,
+            status: true,
+            message: true,
+            created_at: true,
+          },
+        },
+        reviews: {
+          select: {
+            rating: true,
+          },
+        },
+        attachment: {
+          select: {
+            id: true,
+            name: true,
+            file: true,
+            type: true,
+            created_at: true,
+          },
+        },
+      },
+    });
+
+    if (!job) {
+      throw new NotFoundException(`Job with ID ${jobId} not found`);
+    }
+
+    const attachmentsCount = job.attachment.length;
+
+    return {
+      success: true,
+      message: 'Job details retrieved successfully',
+      data: {
+        id: job.id,
+        job_title: job.job_title,
+        job_description: job.job_description,
+        job_category: job.job_category,
+        job_photo_url: ImageGetUtil.jobPhotoUrl(job.job_photo),
+        project_budget: job.project_budget,
+        platform: job.platform,
+        duration: job.project_duration,
+        country: job.user?.country ?? null,
+        skill: job.skill,
+        attachment: job.attachment.map((item) => ({
+          id: item.id,
+          name: item.name,
+          file: item.file,
+          type: item.type,
+          created_at: item.created_at,
+        })),
+        attachment_count: attachmentsCount,
+        bids: job.bids.map((bid) => ({
+          id: bid.id,
+          status: bid.status,
+          message: bid.message,
+          created_at: bid.created_at,
+        })),
+
+        user_name:
+          `${job.user?.first_name ?? ''} ${job.user?.last_name ?? ''}`.trim(),
+        user_photo_url: ImageGetUtil.avatarUrl(job.user?.avatar),
+        user_location: job.user?.country ?? null,
+        user_language: job.user?.language ?? null,
+      },
+    };
+  }
+
+  /*--------------------------------------------------
+               hire request
+  --------------------------------------------------*/
+
+  /*--------------------------------------------------
+                     hire request
+  --------------------------------------------------*/
+  async hireRequest(paginationDto: PaginationDto, editorId: string) {
+   
+    const page = paginationDto?.page ?? 1;
+    const limit = paginationDto?.limit ?? 10;
+    const skip = (page - 1) * limit;
+
+    const where = {
+      hire_profile_id: editorId,
+    };
+
+    const [total, hireRequests] = await this.prisma.$transaction([
+      this.prisma.hire.count({ where }),
+      this.prisma.hire.findMany({
+        where,
+        orderBy: {
+          createdAt: 'desc',
+        },
+        skip,
+        take: limit,
+        select: {
+          id: true,
+          project_title: true,
+          project_photo: true,
+          project_budget: true,
+          project_duration: true,
+          status: true,
+          user: {
+            select: {
+              first_name: true,
+              last_name: true,
+            },
+          },
+        },
+      }),
+    ]);
+
+
+    const formattedData = hireRequests.map((request) => ({
+      id: request.id,
+      project_title: request.project_title,
+      project_photo: request.project_photo,
+      project_photo_url: ImageGetUtil.jobPhotoUrl(request.project_photo), 
+      project_budget: request.project_budget,
+      project_duration: request.project_duration,
+      status: request.status,
+      client_name: `${request.user?.first_name ?? ''} ${request.user?.last_name ?? ''}`.trim(),
+    }));
+
+    return {
+      success: true,
+      message: 'Hire requests fetched successfully',
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+      },
+      data: formattedData,
+    };
+  }
+
 }
