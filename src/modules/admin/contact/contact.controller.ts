@@ -17,9 +17,10 @@ import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { Roles } from '../../../common/guard/role/roles.decorator';
 import { Role } from '../../../common/guard/role/role.enum';
 import { RolesGuard } from '../../../common/guard/role/roles.guard';
+import { USER_TYPES } from 'src/common/swagger/swagger-auth';
 
-@ApiBearerAuth()
-@ApiTags('Contact')
+@ApiBearerAuth(USER_TYPES.ADMIN)
+@ApiTags('Admin Contact')
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles(Role.ADMIN)
 @Controller('admin/contact')

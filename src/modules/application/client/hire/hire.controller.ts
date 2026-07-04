@@ -17,7 +17,11 @@ import { JwtAuthGuard } from 'src/modules/auth/guards/jwt-auth.guard';
 import { CreateHireDto } from './dto/create-hire.dto';
 import { HireService } from './hire.service';
 import { UpdateHireDto } from 'src/modules/application/client/hire/dto/update-hire.dto';
+import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import { USER_TYPES } from 'src/common/swagger/swagger-auth';
 
+@ApiTags('Client Hires')
+@ApiBearerAuth(USER_TYPES.CLIENT)
 @Controller('hires')
 export class HireController {
   constructor(private readonly hireService: HireService) {}

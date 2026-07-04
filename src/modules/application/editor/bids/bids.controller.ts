@@ -14,7 +14,11 @@ import { JwtAuthGuard } from 'src/modules/auth/guards/jwt-auth.guard';
 import { BidsService } from './bids.service';
 import { CreateBidDto } from './dto/create-bid.dto';
 import { UpdateBidDto } from './dto/update-bid.dto';
+import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import { USER_TYPES } from 'src/common/swagger/swagger-auth';
 
+@ApiTags('Editor Bids')
+@ApiBearerAuth(USER_TYPES.EDITOR)
 @Controller('bids')
 @UseGuards(JwtAuthGuard)
 export class BidsController {

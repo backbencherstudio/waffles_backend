@@ -33,7 +33,7 @@ export function setupSwagger(app: INestApplication) {
   const document = SwaggerModule.createDocument(app, options);
 
   // Swagger UI Configuration with Auto-Login Interceptor
-  SwaggerModule.setup('api/docs', app, document, {
+  SwaggerModule.setup('docs', app, document, {
     swaggerOptions: {
       persistAuthorization: true,
       docExpansion: 'none',

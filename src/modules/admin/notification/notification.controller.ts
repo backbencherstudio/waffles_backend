@@ -6,8 +6,9 @@ import { Roles } from '../../../common/guard/role/roles.decorator';
 import { RolesGuard } from '../../../common/guard/role/roles.guard';
 import { JwtAuthGuard } from '../../../modules/auth/guards/jwt-auth.guard';
 import { Request } from 'express';
+import { USER_TYPES } from 'src/common/swagger/swagger-auth';
 
-@ApiBearerAuth()
+@ApiBearerAuth(USER_TYPES.ADMIN)
 @ApiTags('Notification')
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles(Role.ADMIN)

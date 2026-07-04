@@ -15,8 +15,11 @@ import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { Role } from '../../../common/guard/role/role.enum';
 import { Roles } from '../../../common/guard/role/roles.decorator';
+import { USER_TYPES } from 'src/common/swagger/swagger-auth';
 
-@ApiBearerAuth()
+@ApiBearerAuth(USER_TYPES.CLIENT)
+@ApiBearerAuth(USER_TYPES.EDITOR)
+@ApiBearerAuth(USER_TYPES.ADMIN)
 @ApiTags('Conversation')
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('chat/conversation')

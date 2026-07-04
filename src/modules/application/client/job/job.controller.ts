@@ -18,7 +18,11 @@ import { JwtAuthGuard } from 'src/modules/auth/guards/jwt-auth.guard';
 import { CreateJobDto } from './dto/create-job.dto';
 import { UpdateJobDto } from './dto/update-job.dto';
 import { JobsService } from './job.service';
+import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import { USER_TYPES } from 'src/common/swagger/swagger-auth';
 
+@ApiTags('Client Jobs')
+@ApiBearerAuth(USER_TYPES.CLIENT)
 @Controller('jobs')
 @UseGuards(JwtAuthGuard)
 export class JobsController {
