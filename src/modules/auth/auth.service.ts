@@ -27,7 +27,6 @@ export class AuthService {
     @InjectRedis() private readonly redis: Redis,
   ) {}
 
-  // me
   async me(userId: string) {
     try {
       const user = await this.prisma.user.findFirst({
@@ -79,8 +78,7 @@ export class AuthService {
       };
     }
   }
-  
-  // register
+  // done
   async register({
     name,
     email,
@@ -164,8 +162,7 @@ export class AuthService {
       };
     }
   }
-  
-  // login
+  // done
   async login({ email, userId }) {
     try {
       const user = await this.userRepository.getUserDetails(userId);
@@ -227,7 +224,7 @@ export class AuthService {
     }
   }
 
-  // forgot password  
+  // done
   async forgotPassword(email) {
     try {
       const user = await this.userRepository.exist({
@@ -265,7 +262,7 @@ export class AuthService {
     }
   }
 
-  // resend token  
+  // done
   async resendToken(email: string) {
     try {
       const user = await this.userRepository.getUserByEmail(email);
@@ -303,7 +300,7 @@ export class AuthService {
     }
   }
 
-  // verify token  
+  //
   async verifyToken({ email, token }) {
     try {
       const user = await this.userRepository.exist({
@@ -343,7 +340,7 @@ export class AuthService {
     }
   }
 
-  // verify email 
+  //done
   async verifyEmail({ email, token }) {
     try {
       const user = await this.userRepository.exist({
@@ -390,8 +387,7 @@ export class AuthService {
       };
     }
   }
-  
-  // resend verification email 
+  // done
   async resendVerificationEmail(email: string) {
     try {
       const user = await this.userRepository.getUserByEmail(email);
@@ -428,7 +424,6 @@ export class AuthService {
     }
   }
 
-  // reset password 
   async resetPassword({ email, token, password }) {
     try {
       const user = await this.userRepository.exist({
@@ -478,7 +473,6 @@ export class AuthService {
     }
   }
 
-  // change password 
   async changePassword({ user_id, oldPassword, newPassword }) {
     try {
       const user = await this.userRepository.getUserDetails(user_id);
@@ -520,7 +514,6 @@ export class AuthService {
 
   // ---------------------------------(end)---------------------------------------
 
-  // done
   async refreshToken(user_id: string, refreshToken: string) {
     try {
       const storedToken = await this.redis.get(`refresh_token:${user_id}`);
@@ -569,7 +562,6 @@ export class AuthService {
     }
   }
 
-  // done
   async revokeRefreshToken(user_id: string) {
     try {
       const storedToken = await this.redis.get(`refresh_token:${user_id}`);
@@ -594,7 +586,6 @@ export class AuthService {
     }
   }
 
-  // done
   async requestEmailChange(user_id: string, email: string) {
     try {
       const user = await this.userRepository.getUserDetails(user_id);
@@ -629,7 +620,6 @@ export class AuthService {
     }
   }
 
-  // done
   async changeEmail({
     user_id,
     new_email,
@@ -685,7 +675,6 @@ export class AuthService {
     }
   }
 
-  // done
   async updateUser(
     userId: string,
     updateUserDto: UpdateUserDto,

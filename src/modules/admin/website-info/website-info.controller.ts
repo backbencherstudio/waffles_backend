@@ -20,9 +20,8 @@ import { Roles } from '../../../common/guard/role/roles.decorator';
 import { RolesGuard } from '../../../common/guard/role/roles.guard';
 import { JwtAuthGuard } from '../../../modules/auth/guards/jwt-auth.guard';
 import { Role } from '../../../common/guard/role/role.enum';
-import { USER_TYPES } from 'src/common/swagger/swagger-auth';
 
-@ApiBearerAuth(USER_TYPES.ADMIN)
+@ApiBearerAuth()
 @ApiTags('Website Info')
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles(Role.ADMIN)

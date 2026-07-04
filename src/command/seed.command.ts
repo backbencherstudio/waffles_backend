@@ -65,7 +65,7 @@ export class SeedCommand extends CommandRunner {
         fs.writeFileSync('seeding.log', 'Seeding clients and editors...\n', { flag: 'a' });
         const { clients, editors } = await this.clientEditorSeed();
         fs.writeFileSync('seeding.log', 'Seeding jobs...\n', { flag: 'a' });
-        await this.jobSeed(clients, editors);
+        await this.jobSeed(clients);
         fs.writeFileSync('seeding.log', 'Seeding hires...\n', { flag: 'a' });
         await this.hireSeed(clients, editors);
       });
@@ -190,6 +190,7 @@ export class SeedCommand extends CommandRunner {
   }
 
   async clientEditorSeed() {
+    console.log('Seeding 10 client users and 10 editor users...');
     const passwordHash = await bcrypt.hash('password123', appConfig().security.salt);
     const clients = [];
     const editors = [];
@@ -207,7 +208,6 @@ export class SeedCommand extends CommandRunner {
           name: `Client ${i}`,
           status: 1,
           approved_at: new Date(),
-          email_verified_at: new Date(),
         },
       });
       clients.push(client);
@@ -226,7 +226,6 @@ export class SeedCommand extends CommandRunner {
           name: `Editor ${i}`,
           status: 1,
           approved_at: new Date(),
-          email_verified_at: new Date(),
         },
       });
       editors.push(editor);
@@ -235,7 +234,7 @@ export class SeedCommand extends CommandRunner {
     return { clients, editors };
   }
 
-  async jobSeed(clients: any[], editors: any[]) {
+  async jobSeed(clients: any[]) {
     console.log('Seeding 10 jobs...');
     const contentLengths = Object.values(ContentLength);
     const jobCategories = Object.values(JobCategory);
@@ -247,7 +246,7 @@ export class SeedCommand extends CommandRunner {
       const jobCategory = jobCategories[(i - 1) % jobCategories.length];
       const platform = platforms[(i - 1) % platforms.length];
 
-      const job = await this.prisma.jOB.create({
+      await this.prisma.jOB.create({
         data: {
           job_title: `Professional Video Editor Needed for ${platform} - Project ${i}`,
           job_description: `We are looking for an experienced video editor to work on a ${jobCategory.toLowerCase().replace(/_/g, ' ')} project. The content length will be around ${contentLength}. Need professional coloring and sound design.`,
@@ -260,24 +259,6 @@ export class SeedCommand extends CommandRunner {
           user_id: client.id,
         },
       });
-
-      // Create 4 bids for each job using different editors
-      for (let j = 0; j < 4; j++) {
-        const editor = editors[(i - 1 + j) % editors.length];
-        const bidAmount = parseFloat((job.project_budget * (0.8 + j * 0.1)).toFixed(2));
-        const bidDuration = parseFloat((job.project_duration * (0.8 + j * 0.1)).toFixed(1));
-
-        await this.prisma.bid.create({
-          data: {
-            amount: bidAmount,
-            req_date: bidDuration,
-            message: `Hi Client, I am ${editor.name}. I would love to edit your ${jobCategory.toLowerCase().replace(/_/g, ' ')} project on ${platform}. I have a lot of experience and can deliver within ${bidDuration} days.`,
-            jobId: job.id,
-            user_id: editor.id,
-            status: j === 0 ? 'IN_PROGRESS' : 'PENDING',
-          },
-        });
-      }
     }
   }
 
@@ -503,7 +484,7 @@ export class SeedCommand extends CommandRunner {
         // system role
         {
           id: '1',
-          title: 'Super Admin',
+          title: 'Super Admin', // system admin, do not assign to a tenant/user
           name: 'su_admin',
         },
         // organization role
