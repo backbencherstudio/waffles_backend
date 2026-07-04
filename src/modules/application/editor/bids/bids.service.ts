@@ -9,7 +9,6 @@ import appConfig from 'src/config/app.config';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { CreateBidDto } from './dto/create-bid.dto';
 import { UpdateBidDto } from './dto/update-bid.dto';
-import { BidStatus } from 'prisma/generated';
 
 @Injectable()
 export class BidsService {
@@ -164,7 +163,7 @@ export class BidsService {
         const updatedBid = await tx.bid.update({
           where: { id: bidId },
           data: {
-            status: status as BidStatus,
+            status: status,
             updated_at: new Date(),
           },
         });

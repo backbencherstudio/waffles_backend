@@ -4,11 +4,7 @@ import { CreateExtensionDto } from './dto/create-extension.dto';
 import { UpdateExtensionDto } from './dto/update-extension.dto';
 import { UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from 'src/modules/auth/guards/jwt-auth.guard';
-import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
-import { USER_TYPES } from 'src/common/swagger/swagger-auth';
 
-@ApiTags('Editor Extension')
-@ApiBearerAuth(USER_TYPES.EDITOR)
 @Controller('extension')
 @UseGuards(JwtAuthGuard)
 export class ExtensionController {

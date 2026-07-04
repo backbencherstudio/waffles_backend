@@ -11,7 +11,6 @@ import { CreateEducationDto } from './dto/create-education.dto';
 import { UpdateEducationDto } from './dto/update-education.dto';
 import { CreateSkillDto } from './dto/create-skill.dto';
 import { UpdateAboutDto } from './dto/update-about.dto';
-import { UpdateSkillDto } from './dto/update-skill.dto';
 
 @Injectable()
 export class ProfileService {
@@ -329,29 +328,12 @@ export class ProfileService {
     };
   }
 
-  // topic:skills
-
-  // *get all skills
-  async getSkills(userId: string) {
-    const skills = await this.prisma.skills.findMany({
-      where: { user_id: userId },
-      select: {
-        id: true,
-        skill_name: true,
-      },
-    });
-    return {
-      success: true,
-      message: 'Skills retrieved successfully',
-      data: skills,
-    };
-  }
-
   // *create skills
   async createSkills(userId: string, dto: CreateSkillDto) {
-
-    const result = await this.prisma.skills.create({
-      data: {
+    const result = await this.prisma.skills.upsert({
+      where: { user_id: userId },
+      update: { skill_name: dto.skill_name },
+      create: {
         skill_name: dto.skill_name,
         user_id: userId,
       },
@@ -364,33 +346,6 @@ export class ProfileService {
     };
   }
 
-
-  // *update skills
-  async updateSkills(
-    userId: string, 
-    id: string, 
-    updateSkillDto: UpdateSkillDto) {
-
-    const { skill_name } = updateSkillDto;
-
-    const data: any = {};
-    if (skill_name) data.skill_name = skill_name;
-
-    const updatedSkill = await this.prisma.skills.update({
-      where: { id, user_id: userId },
-      data, 
-      select: {
-        id: true,
-        skill_name: true,
-      },
-    });
-
-    return {
-      success: true,
-      message: 'Skill updated successfully',
-      data: updatedSkill,
-    };
-  }
   
   
 

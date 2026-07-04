@@ -42,12 +42,10 @@ import { USER_TYPES } from 'src/common/swagger/swagger-auth';
 export class AuthController {
   constructor(private authService: AuthService) {}
 
-  // get user details
+  // *get user details
   @ApiOperation({ summary: 'Get user details' })
   @ApiBearerAuth(USER_TYPES.CLIENT)
-  @ApiOkResponse({
-    description: 'Authenticated user profile returned successfully.',
-  })
+  @ApiOkResponse({ description: 'Authenticated user profile returned successfully.' })
   @ApiUnauthorizedResponse({ description: 'Missing or invalid JWT token.' })
   @UseGuards(JwtAuthGuard)
   @Get('me')
@@ -66,7 +64,7 @@ export class AuthController {
     }
   }
 
-  // register user
+  // *register user
   @ApiOperation({ summary: 'Register a user' })
   @ApiBody({ type: CreateUserDto })
   @ApiOkResponse({ description: 'User registered successfully.' })
@@ -147,52 +145,19 @@ export class AuthController {
     }
   }
 
-
-  // login user
-  @ApiOperation({
-    summary: 'Unified Login',
-    description: `Authenticate a user. All users login through this endpoint.
-    **User Types vs Assignable Roles:**
-    - \`user_type\` determines system-level access (ADMIN,CLIENT,EDITOR, USER)
-    
-    **Test Credentials by User Type:**
-
-    | User Type | Email | Password |
-    |-----------|-------|----------|
-    | Admin | admin@gmail.com  | password123 |
-    | Client | client@gmail.com | password123 |
-    | Editor | editor@gmail.com | password123 |`,
-  })
+  // *login user
+  @ApiOperation({ summary: 'Login user' })
   @ApiBody({
     schema: {
       type: 'object',
       required: ['email', 'password'],
       properties: {
-        email: { type: 'string', example: 'editor@gmail.com' },
+        email: { type: 'string', example: 'john@example.com' },
         password: { type: 'string', example: 'password123' },
       },
     },
-    examples: {
-      client: {
-        summary: 'Client Login',
-        description: 'User type: CLIENT',
-        value: { email: 'client@waffles.com', password: 'password123' },
-      },
-      editor: {
-        summary: 'Editor Login',
-        description: 'User type: EDITOR',
-        value: { email: 'editor@waffles.com', password: 'password123' },
-      },
-      admin: {
-        summary: 'Admin Login',
-        description: 'User type: ADMIN',
-        value: { email: 'admin@waffles.com', password: 'password123' },
-      },
-    },
   })
-  @ApiOkResponse({
-    description: 'Login successful. Access and refresh token returned.',
-  })
+  @ApiOkResponse({ description: 'Login successful. Access and refresh token returned.' })
   @ApiUnauthorizedResponse({ description: 'Invalid credentials.' })
   @UseGuards(LocalAuthGuard)
   @Post('login')
@@ -222,8 +187,7 @@ export class AuthController {
     }
   }
 
-
-  // forgot password
+  // *forgot password
   @ApiOperation({ summary: 'Forgot password' })
   @ApiBody({
     schema: {
@@ -252,8 +216,7 @@ export class AuthController {
     }
   }
 
-  
-  // verify email
+  // *verify email
   @ApiOperation({ summary: 'Verify email' })
   @ApiBody({ type: VerifyEmailDto })
   @ApiOkResponse({ description: 'Email verification successful.' })
@@ -281,8 +244,7 @@ export class AuthController {
     }
   }
 
-
-  // resend verification email to verify the email
+  // *resend verification email to verify the email
   @ApiOperation({ summary: 'Resend verification email' })
   @ApiBody({
     schema: {
@@ -311,8 +273,7 @@ export class AuthController {
     }
   }
 
-
-  // reset password if user forget the password
+  // *reset password if user forget the password
   @ApiOperation({ summary: 'Reset password' })
   @ApiBody({
     schema: {
@@ -326,9 +287,7 @@ export class AuthController {
     },
   })
   @ApiOkResponse({ description: 'Password reset successful.' })
-  @ApiBadRequestResponse({
-    description: 'Invalid email/token/password payload.',
-  })
+  @ApiBadRequestResponse({ description: 'Invalid email/token/password payload.' })
   @Post('reset-password')
   async resetPassword(
     @Body() data: { email: string; token: string; password: string },
@@ -362,7 +321,7 @@ export class AuthController {
     }
   }
 
-  // resend token
+  // *resend token
   @ApiOperation({ summary: 'Resend reset password token' })
   @ApiBody({
     schema: {
@@ -391,7 +350,7 @@ export class AuthController {
     }
   }
 
-  // veify token
+  // *veify token
   @ApiOperation({ summary: 'Verify reset password token' })
   @ApiBody({
     schema: {
@@ -549,9 +508,7 @@ export class AuthController {
   }
 
   @ApiOperation({ summary: 'Google OAuth callback endpoint' })
-  @ApiOkResponse({
-    description: 'Google OAuth callback processed successfully.',
-  })
+  @ApiOkResponse({ description: 'Google OAuth callback processed successfully.' })
   @Get('google/redirect')
   @UseGuards(AuthGuard('google'))
   async googleLoginRedirect(@Req() req: Request): Promise<any> {

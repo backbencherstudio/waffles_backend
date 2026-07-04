@@ -6,9 +6,8 @@ import { JwtAuthGuard } from '../../../modules/auth/guards/jwt-auth.guard';
 import { Role } from '../../../common/guard/role/role.enum';
 import { Roles } from '../../../common/guard/role/roles.decorator';
 import { Request } from 'express';
-import { USER_TYPES } from 'src/common/swagger/swagger-auth';
 
-@ApiBearerAuth(USER_TYPES.ADMIN)
+@ApiBearerAuth()
 @ApiTags('Payment transaction')
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles(Role.ADMIN)
