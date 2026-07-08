@@ -79,7 +79,7 @@ export class AuthService {
       };
     }
   }
-  
+
   // register
   async register({
     name,
@@ -164,7 +164,7 @@ export class AuthService {
       };
     }
   }
-  
+
   // login
   async login({ email, userId }) {
     try {
@@ -227,7 +227,7 @@ export class AuthService {
     }
   }
 
-  // forgot password  
+  // forgot password
   async forgotPassword(email) {
     try {
       const user = await this.userRepository.exist({
@@ -265,7 +265,7 @@ export class AuthService {
     }
   }
 
-  // resend token  
+  // resend token
   async resendToken(email: string) {
     try {
       const user = await this.userRepository.getUserByEmail(email);
@@ -303,7 +303,7 @@ export class AuthService {
     }
   }
 
-  // verify token  
+  // verify token
   async verifyToken({ email, token }) {
     try {
       const user = await this.userRepository.exist({
@@ -343,7 +343,7 @@ export class AuthService {
     }
   }
 
-  // verify email 
+  // verify email
   async verifyEmail({ email, token }) {
     try {
       const user = await this.userRepository.exist({
@@ -390,8 +390,8 @@ export class AuthService {
       };
     }
   }
-  
-  // resend verification email 
+
+  // resend verification email
   async resendVerificationEmail(email: string) {
     try {
       const user = await this.userRepository.getUserByEmail(email);
@@ -428,7 +428,7 @@ export class AuthService {
     }
   }
 
-  // reset password 
+  // reset password
   async resetPassword({ email, token, password }) {
     try {
       const user = await this.userRepository.exist({
@@ -478,7 +478,7 @@ export class AuthService {
     }
   }
 
-  // change password 
+  // change password
   async changePassword({ user_id, oldPassword, newPassword }) {
     try {
       const user = await this.userRepository.getUserDetails(user_id);

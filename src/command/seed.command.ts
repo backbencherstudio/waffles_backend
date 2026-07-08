@@ -65,9 +65,11 @@ export class SeedCommand extends CommandRunner {
         fs.writeFileSync('seeding.log', 'Seeding clients and editors...\n', { flag: 'a' });
         const { clients, editors } = await this.clientEditorSeed();
         fs.writeFileSync('seeding.log', 'Seeding jobs...\n', { flag: 'a' });
-        await this.jobSeed(clients, editors);
+        const jobs = await this.jobSeed(clients, editors);
         fs.writeFileSync('seeding.log', 'Seeding hires...\n', { flag: 'a' });
         await this.hireSeed(clients, editors);
+        fs.writeFileSync('seeding.log', 'Seeding reviews and deliveries...\n', { flag: 'a' });
+        await this.reviewAndDeliverySeed(jobs, clients, editors);
       });
 
       fs.writeFileSync('seeding.log', 'Seeding done successfully.\n', { flag: 'a' });
@@ -240,12 +242,23 @@ export class SeedCommand extends CommandRunner {
     const contentLengths = Object.values(ContentLength);
     const jobCategories = Object.values(JobCategory);
     const platforms = Object.values(Platform);
+    const jobs = [];
 
     for (let i = 1; i <= 10; i++) {
       const client = clients[(i - 1) % clients.length];
       const contentLength = contentLengths[(i - 1) % contentLengths.length];
       const jobCategory = jobCategories[(i - 1) % jobCategories.length];
       const platform = platforms[(i - 1) % platforms.length];
+
+      // Jobs 1-4: PENDING (bids PENDING)
+      // Jobs 5-7: IN_PROGRESS (one bid IN_PROGRESS, others PENDING)
+      // Jobs 8-10: COMPLETED (one bid ACCEPTED, others PENDING)
+      let status: JobStatus = JobStatus.PENDING;
+      if (i >= 5 && i <= 7) {
+        status = JobStatus.IN_PROGRESS;
+      } else if (i >= 8) {
+        status = JobStatus.COMPLETED;
+      }
 
       const job = await this.prisma.jOB.create({
         data: {
@@ -256,16 +269,24 @@ export class SeedCommand extends CommandRunner {
           job_category: jobCategory,
           project_duration: parseFloat((3 + i).toFixed(1)),
           platform: platform,
-          status: JobStatus.PENDING,
+          status: status,
           user_id: client.id,
         },
       });
+      jobs.push(job);
 
       // Create 4 bids for each job using different editors
       for (let j = 0; j < 4; j++) {
         const editor = editors[(i - 1 + j) % editors.length];
         const bidAmount = parseFloat((job.project_budget * (0.8 + j * 0.1)).toFixed(2));
         const bidDuration = parseFloat((job.project_duration * (0.8 + j * 0.1)).toFixed(1));
+
+        let bidStatus = 'PENDING';
+        if (status === JobStatus.IN_PROGRESS && j === 0) {
+          bidStatus = 'IN_PROGRESS';
+        } else if (status === JobStatus.COMPLETED && j === 0) {
+          bidStatus = 'ACCEPTED';
+        }
 
         await this.prisma.bid.create({
           data: {
@@ -274,11 +295,12 @@ export class SeedCommand extends CommandRunner {
             message: `Hi Client, I am ${editor.name}. I would love to edit your ${jobCategory.toLowerCase().replace(/_/g, ' ')} project on ${platform}. I have a lot of experience and can deliver within ${bidDuration} days.`,
             jobId: job.id,
             user_id: editor.id,
-            status: j === 0 ? 'IN_PROGRESS' : 'PENDING',
+            status: bidStatus as any,
           },
         });
       }
     }
+    return jobs;
   }
 
   async hireSeed(clients: any[], editors: any[]) {
@@ -529,5 +551,66 @@ export class SeedCommand extends CommandRunner {
         },
       ],
     });
+  }
+
+  async reviewAndDeliverySeed(jobs: any[], clients: any[], editors: any[]) {
+    console.log('Seeding deliveries and reviews...');
+    for (const job of jobs) {
+      const winningBid = await this.prisma.bid.findFirst({
+        where: {
+          jobId: job.id,
+          status: {
+            in: ['IN_PROGRESS', 'ACCEPTED'],
+          },
+        },
+      });
+
+      if (!winningBid || !winningBid.user_id) {
+        continue;
+      }
+
+      const editorId = winningBid.user_id;
+      const clientId = job.user_id;
+
+      if (job.status === JobStatus.IN_PROGRESS) {
+        // Seed a pending delivery for Project 6 to show active delivery flow
+        if (job.job_title.includes('Project 6')) {
+          await this.prisma.delivery.create({
+            data: {
+              job_id: job.id,
+              user_id: editorId,
+              message: `Hi Client, here is the draft delivery for your review. Let me know if you need any adjustments.`,
+              status: 'PENDING',
+            },
+          });
+        }
+      } else if (job.status === JobStatus.COMPLETED) {
+        // Seed an accepted delivery for completed jobs
+        const delivery = await this.prisma.delivery.create({
+          data: {
+            job_id: job.id,
+            user_id: editorId,
+            message: `Hi Client, here is the final high-quality delivery for the project. Enjoy!`,
+            status: 'ACCEPTED',
+          },
+        });
+
+        // Seed a review from the Client to the Editor
+        await this.prisma.review.create({
+          data: {
+            rating: 5,
+            comment: `Outstanding work! Extremely professional editing, great communication, and delivered way ahead of schedule. Highly recommended!`,
+            communication_quality: 5,
+            on_time_delivery: 5,
+            value_for_money: 5,
+            would_recommend: 5,
+            user_id: clientId,
+            service_provider_id: editorId,
+            job_id: job.id,
+            delivery_id: delivery.id,
+          },
+        });
+      }
+    }
   }
 }
