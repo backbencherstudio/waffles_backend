@@ -20,6 +20,15 @@ CREATE TYPE "VideoCategory" AS ENUM ('LONG_FORM', 'SHORT_FORM', 'THUMBNAIL', 'AD
 CREATE TYPE "SoftwarePreference" AS ENUM ('FINAL_CUT_PRO', 'DAVINCI_RESOLVE', 'SONY_VEGAS', 'ADOBE_PREMIERE_PRO', 'FILMORA', 'AFTER_EFFECTS', 'CAPCUT', 'ANY');
 
 -- CreateEnum
+CREATE TYPE "BidStatus" AS ENUM ('PENDING', 'APPROVED', 'REJECT', 'IN_PROGRESS', 'CANCELLED', 'ACCEPTED');
+
+-- CreateEnum
+CREATE TYPE "DeliveryStatus" AS ENUM ('PENDING', 'ACCEPTED', 'REJECTED', 'REVISION_REQUESTED');
+
+-- CreateEnum
+CREATE TYPE "ExtensionStatus" AS ENUM ('PENDING', 'APPROVED', 'REJECTED');
+
+-- CreateEnum
 CREATE TYPE "MessageStatus" AS ENUM ('SENT', 'DELIVERED', 'READ');
 
 -- CreateTable
@@ -134,14 +143,14 @@ CREATE TABLE "skills" (
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updated_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "deleted_at" TIMESTAMP(3),
-    "skill_name" TEXT[],
+    "skill_name" TEXT NOT NULL,
     "user_id" TEXT NOT NULL,
 
     CONSTRAINT "skills_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
-CREATE TABLE "JOB" (
+CREATE TABLE "jobs" (
     "id" TEXT NOT NULL,
     "job_title" TEXT,
     "job_description" TEXT,
@@ -149,7 +158,7 @@ CREATE TABLE "JOB" (
     "content_length" "ContentLength" NOT NULL,
     "project_budget" DOUBLE PRECISION,
     "job_category" "JobCategory" NOT NULL,
-    "project_duration" TEXT,
+    "project_duration" DOUBLE PRECISION,
     "platform" "Platform" NOT NULL,
     "skill" TEXT,
     "reference" TEXT,
@@ -159,25 +168,27 @@ CREATE TABLE "JOB" (
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updated_at" TIMESTAMP(3) NOT NULL,
     "deleted_at" TIMESTAMP(3),
+    "started_at" TIMESTAMP(3),
+    "deadline" TIMESTAMP(3),
     "user_id" TEXT,
 
-    CONSTRAINT "JOB_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "jobs_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
-CREATE TABLE "Bid" (
+CREATE TABLE "bids" (
     "id" TEXT NOT NULL,
     "amount" DOUBLE PRECISION,
-    "req_date" TIMESTAMP(3),
+    "req_date" DOUBLE PRECISION,
     "message" TEXT,
     "jobId" TEXT,
-    "status" TEXT NOT NULL DEFAULT 'PENDING',
+    "status" "BidStatus" NOT NULL DEFAULT 'PENDING',
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updated_at" TIMESTAMP(3) NOT NULL,
     "deleted_at" TIMESTAMP(3),
     "user_id" TEXT,
 
-    CONSTRAINT "Bid_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "bids_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
@@ -200,6 +211,56 @@ CREATE TABLE "hires" (
     "startedAt" TIMESTAMP(3),
 
     CONSTRAINT "hires_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "reviews" (
+    "id" TEXT NOT NULL,
+    "rating" INTEGER NOT NULL,
+    "comment" VARCHAR(300),
+    "communication_quality" INTEGER,
+    "on_time_delivery" INTEGER,
+    "value_for_money" INTEGER,
+    "would_recommend" INTEGER,
+    "user_id" TEXT NOT NULL,
+    "job_id" TEXT,
+    "delivery_id" TEXT,
+    "service_provider_id" TEXT NOT NULL,
+    "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updated_at" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "reviews_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "deliveries" (
+    "id" TEXT NOT NULL,
+    "job_id" TEXT,
+    "user_id" TEXT,
+    "message" TEXT,
+    "extend_time" INTEGER,
+    "previous_date" TIMESTAMP(3),
+    "status" "DeliveryStatus" NOT NULL DEFAULT 'PENDING',
+    "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updated_at" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "deliveries_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "extension_requests" (
+    "id" TEXT NOT NULL,
+    "job_id" TEXT NOT NULL,
+    "user_id" TEXT NOT NULL,
+    "message" VARCHAR(300) NOT NULL,
+    "extension_days" INTEGER NOT NULL,
+    "original_date" TIMESTAMP(3) NOT NULL,
+    "new_date" TIMESTAMP(3),
+    "status" "ExtensionStatus" NOT NULL DEFAULT 'PENDING',
+    "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updated_at" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "extension_requests_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
@@ -339,6 +400,8 @@ CREATE TABLE "attachments" (
     "file" TEXT,
     "file_alt" TEXT,
     "hire_id" TEXT,
+    "reviewId" TEXT,
+    "deliveryId" TEXT,
 
     CONSTRAINT "attachments_pkey" PRIMARY KEY ("id")
 );
@@ -493,9 +556,6 @@ CREATE UNIQUE INDEX "users_domain_key" ON "users"("domain");
 CREATE UNIQUE INDEX "users_username_key" ON "users"("username");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "skills_user_id_key" ON "skills"("user_id");
-
--- CreateIndex
 CREATE UNIQUE INDEX "participants_conversation_id_user_id_key" ON "participants"("conversation_id", "user_id");
 
 -- CreateIndex
@@ -523,16 +583,37 @@ ALTER TABLE "educations" ADD CONSTRAINT "educations_user_id_fkey" FOREIGN KEY ("
 ALTER TABLE "skills" ADD CONSTRAINT "skills_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "JOB" ADD CONSTRAINT "JOB_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+ALTER TABLE "jobs" ADD CONSTRAINT "jobs_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "Bid" ADD CONSTRAINT "Bid_jobId_fkey" FOREIGN KEY ("jobId") REFERENCES "JOB"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+ALTER TABLE "bids" ADD CONSTRAINT "bids_jobId_fkey" FOREIGN KEY ("jobId") REFERENCES "jobs"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "Bid" ADD CONSTRAINT "Bid_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+ALTER TABLE "bids" ADD CONSTRAINT "bids_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "hires" ADD CONSTRAINT "hires_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "reviews" ADD CONSTRAINT "reviews_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "reviews" ADD CONSTRAINT "reviews_job_id_fkey" FOREIGN KEY ("job_id") REFERENCES "jobs"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "reviews" ADD CONSTRAINT "reviews_delivery_id_fkey" FOREIGN KEY ("delivery_id") REFERENCES "deliveries"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "deliveries" ADD CONSTRAINT "deliveries_job_id_fkey" FOREIGN KEY ("job_id") REFERENCES "jobs"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "deliveries" ADD CONSTRAINT "deliveries_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "extension_requests" ADD CONSTRAINT "extension_requests_job_id_fkey" FOREIGN KEY ("job_id") REFERENCES "jobs"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "extension_requests" ADD CONSTRAINT "extension_requests_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "roles" ADD CONSTRAINT "roles_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
@@ -568,6 +649,12 @@ ALTER TABLE "payment_transactions" ADD CONSTRAINT "payment_transactions_user_id_
 ALTER TABLE "attachments" ADD CONSTRAINT "attachments_hire_id_fkey" FOREIGN KEY ("hire_id") REFERENCES "hires"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
+ALTER TABLE "attachments" ADD CONSTRAINT "attachments_reviewId_fkey" FOREIGN KEY ("reviewId") REFERENCES "reviews"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "attachments" ADD CONSTRAINT "attachments_deliveryId_fkey" FOREIGN KEY ("deliveryId") REFERENCES "deliveries"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
 ALTER TABLE "participants" ADD CONSTRAINT "participants_conversation_id_fkey" FOREIGN KEY ("conversation_id") REFERENCES "conversations"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
@@ -595,4 +682,4 @@ ALTER TABLE "_PermissionToRole" ADD CONSTRAINT "_PermissionToRole_B_fkey" FOREIG
 ALTER TABLE "_AttachmentToJOB" ADD CONSTRAINT "_AttachmentToJOB_A_fkey" FOREIGN KEY ("A") REFERENCES "attachments"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "_AttachmentToJOB" ADD CONSTRAINT "_AttachmentToJOB_B_fkey" FOREIGN KEY ("B") REFERENCES "JOB"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "_AttachmentToJOB" ADD CONSTRAINT "_AttachmentToJOB_B_fkey" FOREIGN KEY ("B") REFERENCES "jobs"("id") ON DELETE CASCADE ON UPDATE CASCADE;

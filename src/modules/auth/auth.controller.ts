@@ -40,7 +40,7 @@ import { USER_TYPES } from 'src/common/swagger/swagger-auth';
 @ApiExtraModels(CreateUserDto, UpdateUserDto, VerifyEmailDto)
 @Controller('auth')
 export class AuthController {
-  constructor(private authService: AuthService) {}
+  constructor(private readonly authService: AuthService) {}
 
   // get user details
   @ApiOperation({ summary: 'Get user details' })
@@ -196,7 +196,10 @@ export class AuthController {
   @ApiUnauthorizedResponse({ description: 'Invalid credentials.' })
   @UseGuards(LocalAuthGuard)
   @Post('login')
-  async login(@Req() req: Request, @Res() res: Response) {
+  async login(
+    @Req() req: Request,
+    @Res() res: Response
+  ) {
     try {
       const user_id = req.user.id;
       const user_email = req.user.email;
@@ -237,7 +240,9 @@ export class AuthController {
   @ApiOkResponse({ description: 'Password reset token sent to email.' })
   @ApiBadRequestResponse({ description: 'Email is missing or invalid.' })
   @Post('forgot-password')
-  async forgotPassword(@Body() data: { email: string }) {
+  async forgotPassword(
+    @Body() data: { email: string }
+  ) {
     try {
       const email = data.email;
       if (!email) {
@@ -259,7 +264,9 @@ export class AuthController {
   @ApiOkResponse({ description: 'Email verification successful.' })
   @ApiBadRequestResponse({ description: 'Email or token missing/invalid.' })
   @Post('verify-email')
-  async verifyEmail(@Body() data: VerifyEmailDto) {
+  async verifyEmail(
+    @Body() data: VerifyEmailDto
+  ) {
     try {
       const email = data.email;
       const token = data.token;
@@ -296,7 +303,9 @@ export class AuthController {
   @ApiOkResponse({ description: 'Verification email resent successfully.' })
   @ApiBadRequestResponse({ description: 'Email is missing or invalid.' })
   @Post('resend-verification-email')
-  async resendVerificationEmail(@Body() data: { email: string }) {
+  async resendVerificationEmail(
+    @Body() data: { email: string }
+  ) {
     try {
       const email = data.email;
       if (!email) {
@@ -616,10 +625,8 @@ export class AuthController {
   }
 
   // --------------change password---------
-
-  // --------------end change password---------
-
   // -------change email address------
+  
   @ApiOperation({ summary: 'request email change' })
   @ApiBearerAuth(USER_TYPES.CLIENT)
   @ApiBody({
@@ -733,7 +740,9 @@ export class AuthController {
   @ApiUnauthorizedResponse({ description: 'Missing or invalid JWT token.' })
   @UseGuards(JwtAuthGuard)
   @Post('verify-2fa')
-  async verify2FA(@Req() req: Request, @Body() data: { token: string }) {
+  async verify2FA(
+    @Req() req: Request, 
+    @Body() data: { token: string }) {
     try {
       const user_id = req.user.userId;
       const token = data.token;

@@ -64,10 +64,20 @@ export class SeedCommand extends CommandRunner {
         await this.cleanSeedData();
         fs.writeFileSync('seeding.log', 'Seeding clients and editors...\n', { flag: 'a' });
         const { clients, editors } = await this.clientEditorSeed();
+        
         fs.writeFileSync('seeding.log', 'Seeding jobs...\n', { flag: 'a' });
-        await this.jobSeed(clients, editors);
+        const createdJobs = await this.jobSeed(clients, editors); 
+
+        // --- Seeding Deliveries ---
+        fs.writeFileSync('seeding.log', 'Seeding deliveries...\n', { flag: 'a' });
+        const createdDeliveries = await this.deliverySeed(createdJobs, editors);
+
         fs.writeFileSync('seeding.log', 'Seeding hires...\n', { flag: 'a' });
         await this.hireSeed(clients, editors);
+        
+        // --- Seeding Reviews ---
+        fs.writeFileSync('seeding.log', 'Seeding reviews for jobs...\n', { flag: 'a' });
+        await this.reviewSeed(createdJobs, editors, createdDeliveries);
       });
 
       fs.writeFileSync('seeding.log', 'Seeding done successfully.\n', { flag: 'a' });
@@ -240,12 +250,16 @@ export class SeedCommand extends CommandRunner {
     const contentLengths = Object.values(ContentLength);
     const jobCategories = Object.values(JobCategory);
     const platforms = Object.values(Platform);
+    const jobs = [];
 
     for (let i = 1; i <= 10; i++) {
       const client = clients[(i - 1) % clients.length];
       const contentLength = contentLengths[(i - 1) % contentLengths.length];
       const jobCategory = jobCategories[(i - 1) % jobCategories.length];
       const platform = platforms[(i - 1) % platforms.length];
+
+      // Alternating status to simulate realism (even numbers are completed)
+      const isCompleted = i % 2 === 0;
 
       const job = await this.prisma.jOB.create({
         data: {
@@ -256,10 +270,11 @@ export class SeedCommand extends CommandRunner {
           job_category: jobCategory,
           project_duration: parseFloat((3 + i).toFixed(1)),
           platform: platform,
-          status: JobStatus.PENDING,
+          status: isCompleted ? JobStatus.COMPLETED : JobStatus.PENDING,
           user_id: client.id,
         },
       });
+      jobs.push(job);
 
       // Create 4 bids for each job using different editors
       for (let j = 0; j < 4; j++) {
@@ -279,6 +294,31 @@ export class SeedCommand extends CommandRunner {
         });
       }
     }
+    return jobs;
+  }
+
+  async deliverySeed(jobs: any[], editors: any[]) {
+    console.log('Seeding deliveries...');
+    const deliveries = [];
+
+    for (let i = 0; i < jobs.length; i++) {
+      const job = jobs[i];
+      const assignedEditor = editors[i % editors.length];
+
+      // Create accepted deliveries only for COMPLETED jobs
+      if (job.status === JobStatus.COMPLETED) {
+        const delivery = await this.prisma.delivery.create({
+          data: {
+            job_id: job.id,
+            user_id: assignedEditor.id,
+            message: `Hi Client, I have finished editing the video for project ${i + 1}. I've applied the requested color grading and audio fixes. Please review the attached file!`,
+            status: 'ACCEPTED',
+          },
+        });
+        deliveries.push(delivery);
+      }
+    }
+    return deliveries;
   }
 
   async hireSeed(clients: any[], editors: any[]) {
@@ -315,9 +355,39 @@ export class SeedCommand extends CommandRunner {
     }
   }
 
+  async reviewSeed(jobs: any[], editors: any[], deliveries: any[]) {
+    console.log('Seeding reviews...');
+    
+    for (let i = 0; i < jobs.length; i++) {
+      const job = jobs[i];
+      const assignedEditor = editors[i % editors.length];
+      const clientId = job.user_id;
+
+      // Find matching delivery for this job
+      const matchingDelivery = deliveries.find((d) => d.job_id === job.id);
+
+      // Reviews should ideally exist for COMPLETED jobs
+      if (clientId && assignedEditor && job.status === JobStatus.COMPLETED) {
+        await this.prisma.review.create({
+          data: {
+            rating: (i % 4 === 0) ? 4 : 5, 
+            comment: `Excellent work on project ${i + 1}! Highly professional video editing, crisp pacing, and incredible sound balancing. Will definitely hire again.`,
+            communication_quality: 5,
+            on_time_delivery: 5,
+            value_for_money: 5,
+            would_recommend: 5,
+            user_id: clientId,                 
+            job_id: job.id,                    
+            delivery_id: matchingDelivery ? matchingDelivery.id : undefined, 
+            service_provider_id: assignedEditor.id, 
+          },
+        });
+      }
+    }
+  }
+
   //---- user section ----
   async userSeed() {
-    // system admin, user id: 1
     const systemUser = await this.userRepository.createSuAdminUser({
       username: appConfig().defaultUser.system.username,
       email: appConfig().defaultUser.system.email,
@@ -336,20 +406,15 @@ export class SeedCommand extends CommandRunner {
     let i = 0;
     const permissions = [];
     const permissionGroups = [
-      // (system level )super admin level permission
       { title: 'system_tenant_management', subject: 'SystemTenant' },
-      // end (system level )super admin level permission
       { title: 'user_management', subject: 'User' },
       { title: 'role_management', subject: 'Role' },
-      // Project
       { title: 'Project', subject: 'Project' },
-      // Task
       {
         title: 'Task',
         subject: 'Task',
         scope: ['read', 'create', 'update', 'show', 'delete', 'assign'],
       },
-      // Comment
       { title: 'Comment', subject: 'Comment' },
     ];
 
@@ -391,9 +456,7 @@ export class SeedCommand extends CommandRunner {
     const su_admin_permissions = all_permissions.filter(function (permission) {
       return permission.title.substring(0, 25) == 'system_tenant_management_';
     });
-    // const su_admin_permissions = all_permissions;
 
-    // -----su admin permission---
     const adminPermissionRoleArray = [];
     for (const su_admin_permission of su_admin_permissions) {
       adminPermissionRoleArray.push({
@@ -404,9 +467,7 @@ export class SeedCommand extends CommandRunner {
     await this.prisma.permissionRole.createMany({
       data: adminPermissionRoleArray,
     });
-    // -----------
 
-    // ---admin---
     const project_admin_permissions = all_permissions.filter(
       function (permission) {
         return permission.title.substring(0, 25) != 'system_tenant_management_';
@@ -423,9 +484,7 @@ export class SeedCommand extends CommandRunner {
     await this.prisma.permissionRole.createMany({
       data: projectAdminPermissionRoleArray,
     });
-    // -----------
 
-    // ---project manager---
     const project_manager_permissions = all_permissions.filter(
       function (permission) {
         return (
@@ -448,9 +507,7 @@ export class SeedCommand extends CommandRunner {
     await this.prisma.permissionRole.createMany({
       data: projectManagerPermissionRoleArray,
     });
-    // -----------
 
-    // ---member---
     const member_permissions = all_permissions.filter(function (permission) {
       return (
         permission.title == 'project_read' ||
@@ -472,9 +529,7 @@ export class SeedCommand extends CommandRunner {
     await this.prisma.permissionRole.createMany({
       data: memberPermissionRoleArray,
     });
-    // -----------
 
-    // ---viewer---
     const viewer_permissions = all_permissions.filter(function (permission) {
       return (
         permission.title == 'project_read' ||
@@ -494,19 +549,16 @@ export class SeedCommand extends CommandRunner {
     await this.prisma.permissionRole.createMany({
       data: viewerPermissionRoleArray,
     });
-    // -----------
   }
 
   async roleSeed() {
     await this.prisma.role.createMany({
       data: [
-        // system role
         {
           id: '1',
           title: 'Super Admin',
           name: 'su_admin',
         },
-        // organization role
         {
           id: '2',
           title: 'Admin',
