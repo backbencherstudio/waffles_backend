@@ -147,7 +147,6 @@ export class AuthController {
     }
   }
 
-
   // login user
   @ApiOperation({
     summary: 'Unified Login',
@@ -225,7 +224,6 @@ export class AuthController {
     }
   }
 
-
   // forgot password
   @ApiOperation({ summary: 'Forgot password' })
   @ApiBody({
@@ -257,7 +255,6 @@ export class AuthController {
     }
   }
 
-  
   // verify email
   @ApiOperation({ summary: 'Verify email' })
   @ApiBody({ type: VerifyEmailDto })
@@ -287,7 +284,6 @@ export class AuthController {
       };
     }
   }
-
 
   // resend verification email to verify the email
   @ApiOperation({ summary: 'Resend verification email' })
@@ -319,7 +315,6 @@ export class AuthController {
       };
     }
   }
-
 
   // reset password if user forget the password
   @ApiOperation({ summary: 'Reset password' })
