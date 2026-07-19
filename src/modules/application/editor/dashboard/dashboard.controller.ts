@@ -1,7 +1,5 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Req, Query } from '@nestjs/common';
+import { Controller, Get, UseGuards, Req, Query } from '@nestjs/common';
 import { DashboardService } from './dashboard.service';
-import { CreateDashboardDto } from './dto/create-dashboard.dto';
-import { UpdateDashboardDto } from './dto/update-dashboard.dto';
 import { JwtAuthGuard } from 'src/modules/auth/guards/jwt-auth.guard';
 import { ApiBearerAuth, ApiOkResponse, ApiOperation, ApiQuery, ApiTags } from '@nestjs/swagger';
 import { USER_TYPES } from 'src/common/swagger/swagger-auth';
@@ -13,69 +11,68 @@ import { PaginationDto } from 'src/common/pagination/pagination.dto';
 @Controller('editor/dashboard')
 export class DashboardController {
 
-  constructor(private readonly dashboardService: DashboardService) { }
+  constructor(private readonly dashboardService: DashboardService) {}
 
-  // my order
+  /*----------------------------------------
+               My Order List
+  ----------------------------------------*/
+
   @Get('my-orders')
   @ApiOperation({ 
-    summary: 'Get all my orders',
-    description: 'Get all my orders',
-   })
-  @ApiQuery({
-    name: 'page',
-    required: false,
-    type: Number,
-    example: 1,
-    description: 'Page number for pagination',
+    summary: 'Get all active orders (Combined Flat List)',
+    description: 'Direct Hires and Accepted Bidded Jobs are combined into a single flat list and sorted in chronological order (most recent first).',
   })
-  @ApiQuery({
-    name: 'limit',
-    required: false,
-    type: Number,
-    example: 10,
-    description: 'Number of items per page',
-  })
+  @ApiQuery({ name: 'page', required: false, type: Number, example: 1 })
+  @ApiQuery({ name: 'limit', required: false, type: Number, example: 10 })
   @ApiOkResponse({ 
-    description: 'Successfully retrieved all my orders',
+    description: 'Successfully retrieved active orders in a single unified list',
     schema: {
       example: {
         success: true,
-        message: 'Orders retrieved successfully',
+        message: 'Active orders retrieved successfully',
         pagination: {
           page: 1,
           limit: 10,
-          hiresTotal: 1,
-          hiresTotalPages: 1,
-          biddedJobsTotal: 1,
-          biddedJobsTotalPages: 1,
+          totalItems: 24,
+          totalPages: 3,
         },
-        data: {
-          hires: [
-            {
-              id: 'hire-id-123',
-              project_title: 'Video Editing Project',
-              project_budget: 150,
-              project_duration: '3 days',
-              total_amount: 150,
-              status: 'IN_PROGRESS',
-              type: 'DIRECT_HIRE'
+        data: [
+          {
+            id: 'hire-id-123',
+            project_title: "I will craft quality backlinks for your website's SEO.",
+            project_budget: 55,
+            project_duration: '5 Days',
+            total_amount: 55,
+            status: 'IN_PROGRESS',
+            type: 'DIRECT_HIRE',
+            photo: 'url_to_photo_or_thumbnail',
+            client: {
+              id: 'client-id-1',
+              name: 'Jane Cooper',
+              email: 'jane@waffles.com',
+              avatar: 'avatar_url'
             }
-          ],
-          biddedJobs: [
-            {
-              id: 'job-id-789',
-              project_title: 'Commercial Ads Video',
-              project_budget: 300,
-              project_duration: '5 days',
-              total_amount: 300,
-              status: 'IN_PROGRESS',
-              type: 'BIDDED_JOB'
+          },
+          {
+            id: 'job-id-789',
+            project_title: "I will craft quality backlinks for your website's SEO.",
+            project_budget: 55,
+            project_duration: '5 Days',
+            total_amount: 55,
+            status: 'CANCEL',
+            type: 'BIDDED_JOB',
+            photo: 'url_to_photo_or_thumbnail',
+            client: {
+              id: 'client-id-2',
+              name: 'Wade Warren',
+              email: 'wade@waffles.com',
+              avatar: 'avatar_url'
             }
-          ]
-        }
+          }
+        ]
       }
     }
-   }) 
+  }) 
   async getMyOrders(
     @Req() req: any,
     @Query() paginationDto: PaginationDto
@@ -85,8 +82,6 @@ export class DashboardController {
   }
 
 
-  // 
 
-
-
+  
 }

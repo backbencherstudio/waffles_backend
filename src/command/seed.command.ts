@@ -19,7 +19,10 @@ import {
 
 @Command({ name: 'seed', description: 'prisma db seed' })
 export class SeedCommand extends CommandRunner {
-  constructor(private readonly prisma: PrismaService, private readonly userRepository: UserRepository) {
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly userRepository: UserRepository,
+  ) {
     super();
   }
   async run(passedParam: string[]): Promise<void> {
@@ -28,7 +31,11 @@ export class SeedCommand extends CommandRunner {
 
   async seed(param: string[]) {
     try {
-      fs.writeFileSync('seeding.log', `Prisma Env: ${process.env.PRISMA_ENV}\n`, { flag: 'a' });
+      fs.writeFileSync(
+        'seeding.log',
+        `Prisma Env: ${process.env.PRISMA_ENV}\n`,
+        { flag: 'a' },
+      );
       fs.writeFileSync('seeding.log', 'Seeding started...\n', { flag: 'a' });
 
       // begin transaction
@@ -41,7 +48,9 @@ export class SeedCommand extends CommandRunner {
         }
         const permCount = await this.prisma.permission.count();
         if (permCount === 0) {
-          fs.writeFileSync('seeding.log', 'Seeding permissions...\n', { flag: 'a' });
+          fs.writeFileSync('seeding.log', 'Seeding permissions...\n', {
+            flag: 'a',
+          });
           await this.permissionSeed();
         }
         // check system admin user
@@ -50,47 +59,48 @@ export class SeedCommand extends CommandRunner {
           where: { email: systemAdminEmail },
         });
         if (!existAdmin) {
-          fs.writeFileSync('seeding.log', 'Seeding system admin...\n', { flag: 'a' });
+          fs.writeFileSync('seeding.log', 'Seeding system admin...\n', {
+            flag: 'a',
+          });
           await this.userSeed();
         }
         const permRoleCount = await this.prisma.permissionRole.count();
         if (permRoleCount === 0) {
-          fs.writeFileSync('seeding.log', 'Seeding permission roles...\n', { flag: 'a' });
+          fs.writeFileSync('seeding.log', 'Seeding permission roles...\n', {
+            flag: 'a',
+          });
           await this.permissionRoleSeed();
         }
 
         // Clean and Seed Clients, Editors, Jobs, and Hires
-        fs.writeFileSync('seeding.log', 'Cleaning old seed data...\n', { flag: 'a' });
+        fs.writeFileSync('seeding.log', 'Cleaning old seed data...\n', {
+          flag: 'a',
+        });
         await this.cleanSeedData();
-        fs.writeFileSync('seeding.log', 'Seeding clients and editors...\n', { flag: 'a' });
+        fs.writeFileSync('seeding.log', 'Seeding clients and editors...\n', {
+          flag: 'a',
+        });
         const { clients, editors } = await this.clientEditorSeed();
-        
+
         fs.writeFileSync('seeding.log', 'Seeding jobs...\n', { flag: 'a' });
-<<<<<<< HEAD
-        const createdJobs = await this.jobSeed(clients, editors); 
-
-        // --- Seeding Deliveries ---
-        fs.writeFileSync('seeding.log', 'Seeding deliveries...\n', { flag: 'a' });
-        const createdDeliveries = await this.deliverySeed(createdJobs, editors);
-
-        fs.writeFileSync('seeding.log', 'Seeding hires...\n', { flag: 'a' });
-        await this.hireSeed(clients, editors);
-        
-        // --- Seeding Reviews ---
-        fs.writeFileSync('seeding.log', 'Seeding reviews for jobs...\n', { flag: 'a' });
-        await this.reviewSeed(createdJobs, editors, createdDeliveries);
-=======
         const jobs = await this.jobSeed(clients, editors);
         fs.writeFileSync('seeding.log', 'Seeding hires...\n', { flag: 'a' });
         await this.hireSeed(clients, editors);
-        fs.writeFileSync('seeding.log', 'Seeding reviews and deliveries...\n', { flag: 'a' });
+        fs.writeFileSync('seeding.log', 'Seeding reviews and deliveries...\n', {
+          flag: 'a',
+        });
         await this.reviewAndDeliverySeed(jobs, clients, editors);
->>>>>>> 5ae1c479d3337eaae18a6be1161c4c7747483c8c
       });
 
-      fs.writeFileSync('seeding.log', 'Seeding done successfully.\n', { flag: 'a' });
+      fs.writeFileSync('seeding.log', 'Seeding done successfully.\n', {
+        flag: 'a',
+      });
     } catch (error) {
-      fs.writeFileSync('seeding.log', `Seeding error: ${error.stack || error}\n`, { flag: 'a' });
+      fs.writeFileSync(
+        'seeding.log',
+        `Seeding error: ${error.stack || error}\n`,
+        { flag: 'a' },
+      );
       throw error;
     }
   }
@@ -208,7 +218,10 @@ export class SeedCommand extends CommandRunner {
   }
 
   async clientEditorSeed() {
-    const passwordHash = await bcrypt.hash('password123', appConfig().security.salt);
+    const passwordHash = await bcrypt.hash(
+      'password123',
+      appConfig().security.salt,
+    );
     const clients = [];
     const editors = [];
 
@@ -261,15 +274,11 @@ export class SeedCommand extends CommandRunner {
     const jobs = [];
 
     for (let i = 1; i <= 10; i++) {
-      const client = clients[(i - 1) % clients.length];
+      const client = i <= 6 ? clients[0] : clients[(i - 1) % clients.length];
       const contentLength = contentLengths[(i - 1) % contentLengths.length];
       const jobCategory = jobCategories[(i - 1) % jobCategories.length];
       const platform = platforms[(i - 1) % platforms.length];
 
-<<<<<<< HEAD
-      // Alternating status to simulate realism (even numbers are completed)
-      const isCompleted = i % 2 === 0;
-=======
       // Jobs 1-4: PENDING (bids PENDING)
       // Jobs 5-7: IN_PROGRESS (one bid IN_PROGRESS, others PENDING)
       // Jobs 8-10: COMPLETED (one bid ACCEPTED, others PENDING)
@@ -279,7 +288,6 @@ export class SeedCommand extends CommandRunner {
       } else if (i >= 8) {
         status = JobStatus.COMPLETED;
       }
->>>>>>> 5ae1c479d3337eaae18a6be1161c4c7747483c8c
 
       const job = await this.prisma.jOB.create({
         data: {
@@ -290,11 +298,7 @@ export class SeedCommand extends CommandRunner {
           job_category: jobCategory,
           project_duration: parseFloat((3 + i).toFixed(1)),
           platform: platform,
-<<<<<<< HEAD
-          status: isCompleted ? JobStatus.COMPLETED : JobStatus.PENDING,
-=======
           status: status,
->>>>>>> 5ae1c479d3337eaae18a6be1161c4c7747483c8c
           user_id: client.id,
         },
       });
@@ -302,9 +306,13 @@ export class SeedCommand extends CommandRunner {
 
       // Create 4 bids for each job using different editors
       for (let j = 0; j < 4; j++) {
-        const editor = editors[(i - 1 + j) % editors.length];
-        const bidAmount = parseFloat((job.project_budget * (0.8 + j * 0.1)).toFixed(2));
-        const bidDuration = parseFloat((job.project_duration * (0.8 + j * 0.1)).toFixed(1));
+        const editor = i <= 6 && j === 0 ? editors[0] : editors[(i - 1 + j) % editors.length];
+        const bidAmount = parseFloat(
+          (job.project_budget * (0.8 + j * 0.1)).toFixed(2),
+        );
+        const bidDuration = parseFloat(
+          (job.project_duration * (0.8 + j * 0.1)).toFixed(1),
+        );
 
         let bidStatus = 'PENDING';
         if (status === JobStatus.IN_PROGRESS && j === 0) {
@@ -326,7 +334,12 @@ export class SeedCommand extends CommandRunner {
       }
     }
     return jobs;
-<<<<<<< HEAD
+  }
+
+  async reviewAndDeliverySeed(jobs: any[], clients: any[], editors: any[]) {
+    const deliveries = await this.deliverySeed(jobs, editors);
+    await this.reviewSeed(jobs, editors, deliveries);
+    return { deliveries };
   }
 
   async deliverySeed(jobs: any[], editors: any[]) {
@@ -335,7 +348,7 @@ export class SeedCommand extends CommandRunner {
 
     for (let i = 0; i < jobs.length; i++) {
       const job = jobs[i];
-      const assignedEditor = editors[i % editors.length];
+      const assignedEditor = i < 3 ? editors[0] : editors[i % editors.length];
 
       // Create accepted deliveries only for COMPLETED jobs
       if (job.status === JobStatus.COMPLETED) {
@@ -351,8 +364,6 @@ export class SeedCommand extends CommandRunner {
       }
     }
     return deliveries;
-=======
->>>>>>> 5ae1c479d3337eaae18a6be1161c4c7747483c8c
   }
 
   async hireSeed(clients: any[], editors: any[]) {
@@ -362,8 +373,8 @@ export class SeedCommand extends CommandRunner {
     const softwarePreferences = Object.values(SoftwarePreference);
 
     for (let i = 1; i <= 10; i++) {
-      const client = clients[(i - 1) % clients.length];
-      const editor = editors[(i - 1) % editors.length];
+      const client = i <= 6 ? clients[0] : clients[(i - 1) % clients.length];
+      const editor = i <= 6 ? editors[0] : editors[(i - 1) % editors.length];
       const videoCategory = videoCategories[(i - 1) % videoCategories.length];
       const contentLength = contentLengths[(i - 1) % contentLengths.length];
       const softwarePref = [
@@ -391,10 +402,10 @@ export class SeedCommand extends CommandRunner {
 
   async reviewSeed(jobs: any[], editors: any[], deliveries: any[]) {
     console.log('Seeding reviews...');
-    
+
     for (let i = 0; i < jobs.length; i++) {
       const job = jobs[i];
-      const assignedEditor = editors[i % editors.length];
+      const assignedEditor = i < 3 ? editors[0] : editors[i % editors.length];
       const clientId = job.user_id;
 
       // Find matching delivery for this job
@@ -404,16 +415,16 @@ export class SeedCommand extends CommandRunner {
       if (clientId && assignedEditor && job.status === JobStatus.COMPLETED) {
         await this.prisma.review.create({
           data: {
-            rating: (i % 4 === 0) ? 4 : 5, 
+            rating: i % 4 === 0 ? 4 : 5,
             comment: `Excellent work on project ${i + 1}! Highly professional video editing, crisp pacing, and incredible sound balancing. Will definitely hire again.`,
             communication_quality: 5,
             on_time_delivery: 5,
             value_for_money: 5,
             would_recommend: 5,
-            user_id: clientId,                 
-            job_id: job.id,                    
-            delivery_id: matchingDelivery ? matchingDelivery.id : undefined, 
-            service_provider_id: assignedEditor.id, 
+            user_id: clientId,
+            job_id: job.id,
+            delivery_id: matchingDelivery ? matchingDelivery.id : undefined,
+            service_provider_id: assignedEditor.id,
           },
         });
       }
@@ -616,69 +627,4 @@ export class SeedCommand extends CommandRunner {
       ],
     });
   }
-<<<<<<< HEAD
 }
-=======
-
-  async reviewAndDeliverySeed(jobs: any[], clients: any[], editors: any[]) {
-    console.log('Seeding deliveries and reviews...');
-    for (const job of jobs) {
-      const winningBid = await this.prisma.bid.findFirst({
-        where: {
-          jobId: job.id,
-          status: {
-            in: ['IN_PROGRESS', 'ACCEPTED'],
-          },
-        },
-      });
-
-      if (!winningBid || !winningBid.user_id) {
-        continue;
-      }
-
-      const editorId = winningBid.user_id;
-      const clientId = job.user_id;
-
-      if (job.status === JobStatus.IN_PROGRESS) {
-        // Seed a pending delivery for Project 6 to show active delivery flow
-        if (job.job_title.includes('Project 6')) {
-          await this.prisma.delivery.create({
-            data: {
-              job_id: job.id,
-              user_id: editorId,
-              message: `Hi Client, here is the draft delivery for your review. Let me know if you need any adjustments.`,
-              status: 'PENDING',
-            },
-          });
-        }
-      } else if (job.status === JobStatus.COMPLETED) {
-        // Seed an accepted delivery for completed jobs
-        const delivery = await this.prisma.delivery.create({
-          data: {
-            job_id: job.id,
-            user_id: editorId,
-            message: `Hi Client, here is the final high-quality delivery for the project. Enjoy!`,
-            status: 'ACCEPTED',
-          },
-        });
-
-        // Seed a review from the Client to the Editor
-        await this.prisma.review.create({
-          data: {
-            rating: 5,
-            comment: `Outstanding work! Extremely professional editing, great communication, and delivered way ahead of schedule. Highly recommended!`,
-            communication_quality: 5,
-            on_time_delivery: 5,
-            value_for_money: 5,
-            would_recommend: 5,
-            user_id: clientId,
-            service_provider_id: editorId,
-            job_id: job.id,
-            delivery_id: delivery.id,
-          },
-        });
-      }
-    }
-  }
-}
->>>>>>> 5ae1c479d3337eaae18a6be1161c4c7747483c8c
